@@ -72,10 +72,10 @@ export function JalaliDateField({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex h-11 w-full items-center justify-between rounded-lg border-2 border-input bg-background px-3 text-sm shadow-sm transition-colors hover:border-rose-300 focus:border-rose-500 focus:outline-none"
+            className="flex h-11 w-full items-center justify-between rounded-lg border-2 border-input bg-background px-3 text-sm shadow-sm transition-colors hover:border-blue-300 focus:border-blue-500 focus:outline-none"
           >
             <span className="flex items-center gap-2 font-medium">
-              <CalendarDays className="size-4 text-rose-600" />
+              <CalendarDays className="size-4 text-blue-600" />
               {value ? toFaDigits(value) : "انتخاب تاریخ شمسی"}
             </span>
             <ChevronLeft className="size-4 text-muted-foreground" />
@@ -148,9 +148,9 @@ export function JalaliDateField({
                   onClick={() => pick(jd)}
                   className={`h-9 rounded-md text-sm font-medium transition-colors ${
                     isSel
-                      ? "bg-rose-600 text-white"
+                      ? "bg-blue-600 text-white"
                       : isToday
-                        ? "border border-rose-300 text-rose-700"
+                        ? "border border-blue-300 text-blue-700"
                         : "hover:bg-muted"
                   }`}
                 >

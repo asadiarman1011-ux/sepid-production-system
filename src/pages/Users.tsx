@@ -99,7 +99,7 @@ export default function Users() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Shield className="size-4 text-rose-600" />
+              <Shield className="size-4 text-blue-600" />
               کارمندان
             </CardTitle>
           </CardHeader>
@@ -126,7 +126,7 @@ export default function Users() {
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {u.isOwner ? (
-                      <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-black text-rose-800">
+                      <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-black text-blue-800">
                         رییس کارخانه
                       </span>
                     ) : (

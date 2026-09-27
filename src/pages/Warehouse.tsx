@@ -128,6 +128,7 @@ export default function Warehouse() {
   const updateItem = useMutation(api.warehouse.update);
   const removeItem = useMutation(api.warehouse.remove);
   const adjustStock = useMutation(api.warehouse.adjustStock);
+  const appSettings = useQuery(api.appSettings.get, {});
 
   const materialCats = useMemo(
     () =>
@@ -138,6 +139,7 @@ export default function Warehouse() {
   function resetForm() {
     setEditing(null);
     setName("");
+    setMinQty(appSettings?.lowStockThreshold ?? 5);
     setProductType("");
     setMaterial("");
     setColor("");
@@ -150,7 +152,6 @@ export default function Warehouse() {
     setAttrs([]);
     setUnit("");
     setQty(0);
-    setMinQty(undefined);
     setPrice(undefined);
     setNotes("");
   }
@@ -171,7 +172,7 @@ export default function Warehouse() {
     setAttrs(item.attrs ?? []);
     setUnit(item.unit ?? "");
     setQty(item.qty);
-    setMinQty(item.minQty);
+    setMinQty(item.minQty ?? appSettings?.lowStockThreshold ?? 5);
     setPrice(item.price);
     setNotes(item.notes ?? "");
     setDialogOpen(true);
@@ -261,7 +262,7 @@ export default function Warehouse() {
             onClick={() => setTab(t.id as "apparel" | "material")}
             className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
               tab === t.id
-                ? "bg-rose-600 text-white shadow-sm"
+                ? "bg-blue-600 text-white shadow-sm"
                 : "bg-background text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -301,7 +302,7 @@ export default function Warehouse() {
               <CardContent className="flex h-full flex-col gap-2.5 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate font-bold group-hover:text-rose-700">{w.name}</div>
+                    <div className="truncate font-bold group-hover:text-blue-700">{w.name}</div>
                     <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
                       {w.kind === "apparel" ? (
                         <>
@@ -676,7 +677,7 @@ export default function Warehouse() {
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <History className="size-4 text-rose-600" />
+              <History className="size-4 text-blue-600" />
               تاریخچه تغییرات — {logsFor?.name}
             </DialogTitle>
           </DialogHeader>

@@ -7,7 +7,7 @@ const STATUS_MAP = {
 } as const;
 
 const FOLLOWUP_MAP = {
-  needs: { label: "نیاز به پیگیری", cls: "bg-rose-100 text-rose-800 border-rose-200" },
+  needs: { label: "نیاز به پیگیری", cls: "bg-blue-100 text-blue-800 border-blue-200" },
   following: { label: "در حال پیگیری", cls: "bg-sky-100 text-sky-800 border-sky-200" },
   none: null,
 } as const;

@@ -82,7 +82,7 @@ export function MapPicker({
       <div className="overflow-hidden rounded-xl border bg-muted">
         <div className="flex items-center justify-between gap-2 border-b bg-background px-3 py-2">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <MapPin className="size-3.5 text-rose-600" />
+            <MapPin className="size-3.5 text-blue-600" />
             <span>روی نقشه کلیک کنید</span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -216,7 +216,7 @@ export function MapView({
       <div className="overflow-hidden rounded-xl border bg-muted">
         <div className="flex items-center justify-between gap-2 border-b bg-background px-3 py-2">
           <div className="flex items-center gap-1.5 text-xs font-medium">
-            <MapPin className="size-3.5 text-rose-600" />
+            <MapPin className="size-3.5 text-blue-600" />
             <span>{label ?? "لوکیشن ثبت‌شده"}</span>
           </div>
           <div className="flex gap-1.5">

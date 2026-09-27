@@ -65,7 +65,7 @@ export default function Landing() {
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-600 to-rose-800 text-lg font-black text-white shadow-md">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 text-lg font-black text-white shadow-md">
               س
             </div>
             <div>
@@ -92,12 +92,12 @@ export default function Landing() {
           }}
         />
         <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-20 text-center lg:py-28">
-          <Badge variant="outline" className="gap-1.5 border-rose-200 bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700">
+          <Badge variant="outline" className="gap-1.5 border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             سامانه فروش کارخانه‌های بزرگ پوشاک
           </Badge>
           <h1 className="max-w-3xl text-4xl font-black leading-[1.25] lg:text-5xl">
             مدیریت کامل فروش، سفارش، تحویل و انبار
-            <span className="block text-rose-600">در یک سامانه واحد</span>
+            <span className="block text-blue-600">در یک سامانه واحد</span>
           </h1>
           <p className="max-w-2xl text-base leading-8 text-muted-foreground">
             سامانه اختصاصی «تولیدی پوشاک سپید» برای مدیریت مشتریان، ثبت سفارش‌های ویزیتی،
@@ -121,7 +121,7 @@ export default function Landing() {
           <div className="mt-10 w-full max-w-4xl rounded-2xl border bg-card p-2 shadow-xl">
             <div className="rounded-xl bg-muted/50 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <div className="h-3 w-32 rounded-full bg-rose-200" />
+                <div className="h-3 w-32 rounded-full bg-blue-200" />
                 <div className="flex gap-2">
                   <div className="h-3 w-16 rounded-full bg-border" />
                   <div className="h-3 w-16 rounded-full bg-border" />
@@ -137,7 +137,7 @@ export default function Landing() {
                     transition={{ delay: 0.15 * i + 0.2 }}
                     className="rounded-xl border bg-card p-4 text-right"
                   >
-                    <div className="mb-2 flex size-8 items-center justify-center rounded-lg bg-rose-600 text-sm font-black text-white">
+                    <div className="mb-2 flex size-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-black text-white">
                       {s.num}
                     </div>
                     <div className="text-sm font-bold">{s.title}</div>
@@ -169,7 +169,7 @@ export default function Landing() {
                 transition={{ delay: 0.06 * i }}
               >
                 <div className="h-full rounded-2xl border bg-card p-6 transition-shadow hover:shadow-md">
-                  <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-rose-50 text-rose-700">
+                  <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
                     <f.icon className="size-5" />
                   </div>
                   <h3 className="font-black">{f.title}</h3>
@@ -185,7 +185,7 @@ export default function Landing() {
       <section className="py-16">
         <div className="mx-auto max-w-4xl px-4">
           <div className="rounded-2xl border bg-card p-8 text-center shadow-sm">
-            <div className="mb-3 flex size-12 mx-auto items-center justify-center rounded-xl bg-rose-600 text-white">
+            <div className="mb-3 flex size-12 mx-auto items-center justify-center rounded-xl bg-blue-600 text-white">
               <Shield className="size-6" />
             </div>
             <h2 className="text-xl font-black">اولین کاربر، رییس کارخانه است</h2>

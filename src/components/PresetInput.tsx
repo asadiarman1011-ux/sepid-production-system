@@ -70,7 +70,7 @@ export function PresetInput({
               onChange={(e) => onChange(e.target.value)}
               onFocus={() => setOpen(true)}
               placeholder={placeholder ?? "تایپ کنید یا از پیش‌فرض‌ها انتخاب کنید"}
-              className="h-11 border-2 pr-3 pl-9 font-medium shadow-sm focus:border-rose-500"
+              className="h-11 border-2 pr-3 pl-9 font-medium shadow-sm focus:border-blue-500"
             />
             <ChevronDown className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           </div>
@@ -150,7 +150,7 @@ export function PriceInput({
           onChange(e.target.value === "" ? undefined : Number(e.target.value))
         }
         placeholder="قیمت به تومان"
-        className="h-11 border-2 text-left font-medium shadow-sm focus:border-rose-500"
+        className="h-11 border-2 text-left font-medium shadow-sm focus:border-blue-500"
         dir="ltr"
       />
     </div>

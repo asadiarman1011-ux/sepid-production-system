@@ -93,17 +93,17 @@ export default function Dashboard() {
       }
     >
       {/* Hero CTA */}
-      <Card className="mb-6 overflow-hidden border-0 bg-gradient-to-l from-rose-700 via-rose-600 to-rose-500 text-white">
+      <Card className="mb-6 overflow-hidden border-0 bg-gradient-to-l from-blue-700 via-blue-600 to-blue-500 text-white">
         <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-black">مهم‌ترین کار امروز: ثبت سفارش جدید</h2>
-            <p className="mt-1 text-sm text-rose-100">
+            <p className="mt-1 text-sm text-blue-100">
               فرم کامل سفارش با محاسبه خودکار قیمت و ثبت لوکیشن روی نقشه
             </p>
           </div>
           <Button
             size="lg"
-            className="shrink-0 gap-2 bg-white font-black text-rose-700 hover:bg-rose-50"
+            className="shrink-0 gap-2 bg-white font-black text-blue-700 hover:bg-blue-50"
             onClick={() => navigate("/dashboard/new-order")}
           >
             <ClipboardList className="size-5" />
@@ -118,7 +118,7 @@ export default function Dashboard() {
           <Link key={s.label} to={s.path}>
             <Card className="transition-shadow hover:shadow-md">
               <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
                   <s.icon className="size-5" />
                 </div>
                 <div>
@@ -139,11 +139,11 @@ export default function Dashboard() {
             <Link key={s.id} to={s.path}>
               <Card className="group h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
                 <CardContent className="flex items-start gap-3 p-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground group-hover:bg-rose-50 group-hover:text-rose-700">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground group-hover:bg-blue-50 group-hover:text-blue-700">
                     <Icon className="size-5" />
                   </div>
                   <div>
-                    <div className="font-bold group-hover:text-rose-700">{s.label}</div>
+                    <div className="font-bold group-hover:text-blue-700">{s.label}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {s.id === "orders" && "فرم ثبت سفارش کامل با قیمت و لوکیشن"}
                       {s.id === "customers" && "ثابت، غیرثابت، پیگیری، تاریخچه خرید"}

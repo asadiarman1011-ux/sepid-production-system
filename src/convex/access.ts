@@ -9,6 +9,7 @@ export const SECTIONS = [
   "delivery",
   "warehouse",
   "users",
+  "settings",
 ] as const;
 export type Section = (typeof SECTIONS)[number];
 export const sectionValidator = v.union(

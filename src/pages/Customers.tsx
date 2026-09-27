@@ -215,7 +215,7 @@ export default function Customers() {
             onClick={() => setParams(t.id === "all" ? {} : { tab: t.id })}
             className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
               tab === t.id
-                ? "bg-rose-600 text-white shadow-sm"
+                ? "bg-blue-600 text-white shadow-sm"
                 : "bg-background text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -273,7 +273,7 @@ export default function Customers() {
                     className="min-w-0 flex-1 text-right"
                     onClick={() => setDetailId(c._id)}
                   >
-                    <div className="truncate font-bold group-hover:text-rose-700">
+                    <div className="truncate font-bold group-hover:text-blue-700">
                       {c.name}
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -352,7 +352,7 @@ export default function Customers() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-1 text-xs text-rose-700"
+                    className="h-7 gap-1 text-xs text-blue-700"
                     onClick={() =>
                       navigate(`/dashboard/new-order?customerId=${c._id}`)
                     }
@@ -458,7 +458,7 @@ export default function Customers() {
             </div>
             <div>
               <Label className="mb-1.5 flex items-center gap-1 text-sm font-semibold">
-                <MapPin className="size-3.5 text-rose-600" />
+                <MapPin className="size-3.5 text-blue-600" />
                 لوکیشن روی نقشه
               </Label>
               <MapPicker
@@ -573,7 +573,7 @@ function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void
                     {data.orders.map((o) => (
                       <div
                         key={o._id}
-                        className="rounded-xl border p-3 transition-colors hover:border-rose-200"
+                        className="rounded-xl border p-3 transition-colors hover:border-blue-200"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="flex items-center gap-2 text-sm font-bold">
@@ -582,7 +582,7 @@ function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void
                               {toFaDigits(o.dateLabel)}
                             </span>
                           </span>
-                          <span className="font-black text-rose-700">{formatMoney(o.total)}</span>
+                          <span className="font-black text-blue-700">{formatMoney(o.total)}</span>
                         </div>
                         <div className="mt-2 space-y-1.5">
                           {o.items.map((item, i) => (
@@ -596,7 +596,7 @@ function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void
                               {item.size && <span>سایز: {item.size}</span>}
                               {item.printFront && <span>چاپ جلو: {item.printFront}</span>}
                               {item.printBack && <span>چاپ پشت: {item.printBack}</span>}
-                              <span className="font-bold text-rose-700">
+                              <span className="font-bold text-blue-700">
                                 {toFaDigits(item.qty)} عدد
                               </span>
                             </div>

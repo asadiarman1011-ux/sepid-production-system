@@ -18,6 +18,7 @@ const Customers = lazy(() => import("./pages/Customers.tsx"));
 const Delivery = lazy(() => import("./pages/Delivery.tsx"));
 const Warehouse = lazy(() => import("./pages/Warehouse.tsx"));
 const Users = lazy(() => import("./pages/Users.tsx"));
+const Settings = lazy(() => import("./pages/Settings.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -171,6 +172,14 @@ createRoot(document.getElementById("root")!).render(
                 element={
                   <RequireAuth redirectImmediately>
                     <Users />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/dashboard/settings"
+                element={
+                  <RequireAuth redirectImmediately>
+                    <Settings />
                   </RequireAuth>
                 }
               />

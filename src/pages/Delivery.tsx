@@ -82,6 +82,8 @@ export default function Delivery() {
     status: tab === "pending" ? "pending" : "delivered",
   });
   const markDelivered = useMutation(api.orders.markDelivered);
+  const appSettings = useQuery(api.appSettings.get, {});
+  const deliveryMethods = appSettings?.deliveryMethods ?? ["حضوری", "اسنپ", "باربری", "پست"];
 
   async function handleDelivered() {
     if (!delivering) return;
@@ -120,7 +122,7 @@ export default function Delivery() {
             onClick={() => setParams({ tab: t.id })}
             className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
               tab === t.id
-                ? "bg-rose-600 text-white shadow-sm"
+                ? "bg-blue-600 text-white shadow-sm"
                 : "bg-background text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -161,7 +163,7 @@ export default function Delivery() {
               <CardContent className="flex h-full flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <button className="min-w-0 flex-1 text-right" onClick={() => setDetail(o)}>
-                    <div className="truncate font-bold group-hover:text-rose-700">
+                    <div className="truncate font-bold group-hover:text-blue-700">
                       {o.customerName}
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
@@ -178,7 +180,7 @@ export default function Delivery() {
                   </span>
                 </div>
                 <div className="mt-auto flex items-center justify-between border-t pt-3">
-                  <span className="text-sm font-black text-rose-700">{formatMoney(o.total)}</span>
+                  <span className="text-sm font-black text-blue-700">{formatMoney(o.total)}</span>
                   {o.status === "pending" ? (
                     <Button
                       size="sm"
@@ -227,10 +229,11 @@ export default function Delivery() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="حضوری">حضوری</SelectItem>
-                  <SelectItem value="اسنپ">اسنپ</SelectItem>
-                  <SelectItem value="باربری">باربری</SelectItem>
-                  <SelectItem value="پست">پست</SelectItem>
+                  {deliveryMethods.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -304,9 +307,9 @@ export default function Delivery() {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-center justify-between rounded-xl bg-rose-50 px-4 py-3">
+                <div className="flex items-center justify-between rounded-xl bg-blue-50 px-4 py-3">
                   <span className="font-bold">مبلغ کل سفارش</span>
-                  <span className="font-black text-rose-700">{formatMoney(detail.total)}</span>
+                  <span className="font-black text-blue-700">{formatMoney(detail.total)}</span>
                 </div>
                 {detail.delivery && (
                   <div className="rounded-xl border p-4">

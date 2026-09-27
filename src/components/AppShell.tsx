@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Settings,
   Shield,
   Truck,
   Users,
@@ -20,6 +21,7 @@ import {
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { motion } from "framer-motion";
 
 const ICONS: Record<string, typeof ClipboardList> = {
   clipboard: ClipboardList,
@@ -27,6 +29,7 @@ const ICONS: Record<string, typeof ClipboardList> = {
   truck: Truck,
   boxes: Boxes,
   shield: Shield,
+  settings: Settings,
 };
 
 export function useMyAccess() {
@@ -82,12 +85,12 @@ export function AppShell({
   const sidebar = (
     <div className="flex h-full flex-col gap-1 overflow-y-auto p-4">
       <Link to="/dashboard" className="mb-6 flex items-center gap-3 px-2">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-600 to-rose-800 font-black text-white shadow-md">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-900 font-black text-white shadow-md">
           س
         </div>
         <div>
-          <div className="text-sm font-black">سپید</div>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-sm font-black text-white">سپید</div>
+          <div className="text-[11px] text-blue-200/70">
             تولیدی پوشاک سپید
           </div>
         </div>
@@ -103,8 +106,8 @@ export function AppShell({
             to={item.path}
             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
               active
-                ? "bg-rose-600 text-white shadow-sm"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-blue-100/70 hover:bg-white/10 hover:text-white"
             }`}
           >
             <item.icon className="size-4 shrink-0" />
@@ -112,12 +115,12 @@ export function AppShell({
           </Link>
         );
       })}
-      <div className="mt-auto border-t pt-4">
+      <div className="mt-auto border-t border-white/10 pt-4">
         <div className="mb-3 px-2">
-          <div className="truncate text-sm font-semibold">
+          <div className="truncate text-sm font-semibold text-white">
             {user?.name || user?.email || "کاربر"}
           </div>
-          <div className="truncate text-xs text-muted-foreground">
+          <div className="truncate text-xs text-blue-200/60">
             {isOwner
               ? "رییس کارخانه"
               : access?.role?.name ?? "بدون نقش"}
@@ -142,7 +145,7 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-muted/40" dir="rtl">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 right-0 z-30 hidden w-64 border-l bg-background lg:block">
+      <aside className="fixed inset-y-0 right-0 z-30 hidden w-64 bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950 lg:block">
         {sidebar}
       </aside>
 
@@ -153,7 +156,7 @@ export function AppShell({
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute inset-y-0 right-0 w-72 border-l bg-background shadow-xl">
+          <aside className="absolute inset-y-0 right-0 w-72 bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950 shadow-xl">
             <Button
               variant="ghost"
               size="icon"
@@ -191,7 +194,15 @@ export function AppShell({
           {actions}
         </header>
 
-        <main className="mx-auto max-w-7xl p-4 lg:p-8">{children}</main>
+        <motion.main
+          key={location.pathname}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="mx-auto max-w-7xl p-4 lg:p-8"
+        >
+          {children}
+        </motion.main>
       </div>
     </div>
   );

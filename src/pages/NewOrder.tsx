@@ -83,6 +83,7 @@ export default function NewOrder() {
     api.customers.get,
     preselectedId ? { id: preselectedId as never } : "skip",
   );
+  const appSettings = useQuery(api.appSettings.get, {});
   const [header, setHeader] = useState({
     customerName: "",
     phone: "",
@@ -98,6 +99,14 @@ export default function NewOrder() {
 
   const createOrder = useMutation(api.orders.create);
   const upsertPreset = useMutation(api.presets.upsert);
+
+  // prefill city from settings (فقط وقتی مشتری انتخاب نشده)
+  useEffect(() => {
+    if (!preselectedId && appSettings?.defaultCity) {
+      setHeader((h) => ({ ...h, city: h.city || appSettings.defaultCity! }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appSettings, preselectedId]);
 
   // prefill from selected customer
   useEffect(() => {
@@ -230,7 +239,7 @@ export default function NewOrder() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Package className="size-4 text-rose-600" />
+                <Package className="size-4 text-blue-600" />
                 اطلاعات مشتری و سفارش
               </CardTitle>
             </CardHeader>
@@ -294,7 +303,7 @@ export default function NewOrder() {
               <Card key={idx} className="border-2">
                 <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <BadgePlus className="size-4 text-rose-600" />
+                    <BadgePlus className="size-4 text-blue-600" />
                     محصول {toFaDigits(idx + 1)}
                   </CardTitle>
                   {items.length > 1 && (
@@ -439,7 +448,7 @@ export default function NewOrder() {
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-muted px-4 py-3 sm:col-span-2">
                     <span className="text-sm font-medium">جمع این محصول</span>
-                    <span className="font-black text-rose-700">
+                    <span className="font-black text-blue-700">
                       {formatMoney((it.unitPrice > 0 ? it.unitPrice : lineTotal(it)) * (it.qty || 0))}
                     </span>
                   </div>
@@ -491,7 +500,7 @@ export default function NewOrder() {
               <Separator />
               <div className="flex items-center justify-between">
                 <span className="font-bold">مبلغ نهایی سفارش</span>
-                <span className="text-lg font-black text-rose-700">{formatMoney(total)}</span>
+                <span className="text-lg font-black text-blue-700">{formatMoney(total)}</span>
               </div>
               <div className="rounded-xl bg-muted p-3 text-xs leading-6 text-muted-foreground">
                 هر مقداری که در فرم تایپ کنید، دفعه بعد به عنوان پیش‌فرض پیشنهاد می‌شود

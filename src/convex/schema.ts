@@ -81,6 +81,18 @@ const schema = defineSchema(
       bootstrappedTs: v.number(),
     }),
 
+    /** تنظیمات کلی سامانه (یک ردیف) */
+    appSettings: defineTable({
+      factoryName: v.optional(v.string()),
+      defaultCity: v.optional(v.string()),
+      deliveryMethods: v.optional(v.array(v.string())),
+      lowStockThreshold: v.optional(v.number()),
+      currency: v.optional(v.string()),
+      phone: v.optional(v.string()),
+      address: v.optional(v.string()),
+      updatedAtTs: v.number(),
+    }),
+
     /** permission roles; owner always has full access */
     roles: defineTable({
       name: v.string(),
