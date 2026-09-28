@@ -15,8 +15,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, UserRound } from "lucide-react";
 
-const SEEN_KEY = "profile:completed";
-
+/** بعد از ورود، اگر کاربر هنوز نام ندارد یک‌بار این دیالوگ باز می‌شود */
 export function ProfileDialog() {
   const { user, isAuthenticated } = useAuth();
   const updateProfile = useMutation(api.access.updateProfile);
@@ -25,14 +24,13 @@ export function ProfileDialog() {
   const [jobTitle, setJobTitle] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const userId = user?._id ?? null;
+  const key = userId ? `profile:done:${userId}` : null;
   const needsProfile =
-    isAuthenticated && user != null && !user.name && sessionStorage.getItem(SEEN_KEY) !== "1";
+    isAuthenticated && user != null && !user.name && key != null && localStorage.getItem(key) !== "1";
 
   useEffect(() => {
-    if (needsProfile) {
-      setOpen(true);
-      sessionStorage.setItem(SEEN_KEY, "1");
-    }
+    if (needsProfile) setOpen(true);
   }, [needsProfile]);
 
   async function handleSave() {
@@ -43,6 +41,7 @@ export function ProfileDialog() {
     setSaving(true);
     try {
       await updateProfile({ name: name.trim(), jobTitle: jobTitle.trim() || undefined });
+      if (key) localStorage.setItem(key, "1");
       toast.success("پروفایل ذخیره شد");
       setOpen(false);
     } catch (err) {
@@ -52,8 +51,13 @@ export function ProfileDialog() {
     }
   }
 
+  function handleSkip() {
+    if (key) localStorage.setItem(key, "1");
+    setOpen(false);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : handleSkip())}>
       <DialogContent className="sm:max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -87,10 +91,15 @@ export function ProfileDialog() {
               className="h-11 border-2"
             />
           </div>
-          <Button onClick={handleSave} disabled={saving} className="gap-2">
-            {saving && <Loader2 className="size-4 animate-spin" />}
-            ذخیره و ادامه
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={saving} className="flex-1 gap-2">
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              ذخیره و ادامه
+            </Button>
+            <Button variant="ghost" onClick={handleSkip} disabled={saving}>
+              بعدا
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

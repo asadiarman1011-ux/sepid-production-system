@@ -708,15 +708,25 @@ export default function Warehouse() {
             <div>
               <Label className="mb-1.5 text-sm font-semibold">
                 تعداد {stockDelta > 0 ? "واردشده" : "خارج‌شده"}
+                {stockFor?.unit ? ` (${stockFor.unit})` : ""}
               </Label>
               <Input
                 type="number"
                 min={1}
                 value={stockQty}
                 onChange={(e) => setStockQty(Math.max(1, Number(e.target.value) || 1))}
+                placeholder={stockFor?.unit ? `مثلا ۲ ${stockFor.unit}` : "مثلا ۲"}
                 className="h-11 border-2 font-bold"
                 dir="ltr"
               />
+              {stockFor?.kind === "material" && (
+                <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+                  موجودی فعلی: {formatNumber(stockFor.qty)} {stockFor.unit ?? ""}
+                  {stockFor.minQty != null && stockFor.qty - (stockDelta < 0 ? stockQty : 0) <= stockFor.minQty && (
+                    <span className="mr-2 font-bold text-destructive">⚠ بعد از این خروج به حد هشدار می‌رسد</span>
+                  )}
+                </p>
+              )}
             </div>
             <Button
               onClick={async () => {
@@ -728,7 +738,7 @@ export default function Warehouse() {
                     size: stockSize.trim() || undefined,
                   });
                   toast.success(
-                    `${stockDelta > 0 ? "ورود" : "خروج"} ${formatNumber(stockQty)}${stockSize ? ` برای سایز ${stockSize}` : ""} ثبت شد`,
+                    `${stockDelta > 0 ? "ورود" : "خروج"} ${formatNumber(stockQty)} ${stockFor.unit ?? ""}${stockSize ? ` برای سایز ${stockSize}` : ""} ثبت شد`,
                   );
                   setStockFor(null);
                 } catch (err) {

@@ -147,6 +147,7 @@ export function AppShell({
           size="sm"
           className="w-full justify-start gap-2"
           onClick={async () => {
+            if (!confirm("از حساب خارج می‌شوید؟")) return;
             await signOut();
             navigate("/");
           }}
@@ -160,8 +161,8 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-muted/40" dir="rtl">
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 right-0 z-30 hidden w-64 bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950 lg:block">
+      {/* Desktop sidebar — رنگ از متغیر تم */}
+      <aside className="fixed inset-y-0 right-0 z-30 hidden w-64 bg-gradient-to-b from-[var(--sidebar)] via-[var(--sidebar)] to-black/40 lg:block">
         {sidebar}
       </aside>
 
@@ -172,7 +173,7 @@ export function AppShell({
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute inset-y-0 right-0 w-72 bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950 shadow-xl">
+          <aside className="absolute inset-y-0 right-0 w-72 bg-gradient-to-b from-[var(--sidebar)] via-[var(--sidebar)] to-black/40 shadow-xl">
             <Button
               variant="ghost"
               size="icon"

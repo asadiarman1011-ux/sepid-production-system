@@ -16,7 +16,7 @@ try {
     document.documentElement.classList.add("dark");
   }
   const theme = localStorage.getItem("color-theme");
-  if (theme) document.documentElement.setAttribute("data-theme", theme);
+  document.documentElement.setAttribute("data-theme", theme ?? "navy");
 } catch {
   /* noop */
 }

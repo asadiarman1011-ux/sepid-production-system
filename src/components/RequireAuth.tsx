@@ -40,10 +40,10 @@ export function RequireAuth({
   const location = useLocation();
 
   /**
-   * دوره تحمل: وسط دیپلوی/قطع‌وصلی موقت، useConvexAuth لحظه‌ای
-   * «unauthenticated» می‌شود. اگر همان لحظه به /auth پرت کنیم، کاربر از
-   * حساب و فرمش بیرون می‌افتد. ۲ ثانیه صبر می‌کنیم؛ اگر واقعا لاگین نبود،
-   * آن‌وقت اجازه خروج می‌دهیم.
+   * دوره تحمل طولانی: وسط دیپلوی/ری‌کانکت Convex، useConvexAuth لحظه‌ای
+   * «unauthenticated» می‌شود. اگر همان لحظه به /auth پرت کنیم، کاربر بعد از
+   * ۲-۳ دقیقه کار کردن بی‌جهت بیرون می‌افتد. ۸ ثانیه صبر می‌کنیم و کاربر
+   * را با پیام «اتصال برقرار می‌شود» نگه می‌داریم؛ نشست واقعی دست‌نخورده است.
    */
   const [graceOver, setGraceOver] = useState(false);
   useEffect(() => {
@@ -52,14 +52,15 @@ export function RequireAuth({
       setGraceOver(false);
       return;
     }
-    const t = setTimeout(() => setGraceOver(true), 2000);
+    const t = setTimeout(() => setGraceOver(true), 8000);
     return () => clearTimeout(t);
   }, [isLoading, isAuthenticated]);
 
   if (isLoading || (!isAuthenticated && !graceOver)) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">در حال برقراری اتصال…</p>
       </main>
     );
   }

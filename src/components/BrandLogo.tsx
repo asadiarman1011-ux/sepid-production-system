@@ -14,10 +14,10 @@ export function BrandLogo({
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-md ring-1 ring-black/10",
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-md ring-1 ring-black/5",
         boxClassName,
       )}
-      style={{ background: "#0a0a0a" }}
+      style={{ background: "#dbe7f6" }}
     >
       <svg
         viewBox="0 0 1536 1536"
@@ -25,8 +25,8 @@ export function BrandLogo({
         className={cn("h-full w-full", className)}
         aria-label="لوگوی سپید"
       >
-        {/* پس‌زمینه ثابت مشکی — رنگ امضا تحت تاثیر تم عوض نمی‌شود */}
-        <rect width="1536" height="1536" fill="#0a0a0a" />
+        {/* پس‌زمینه آبی خیلی کم‌رنگ — ثابت در همه تم‌ها تا امضا خراب نشود */}
+        <rect width="1536" height="1536" fill="#dbe7f6" />
         <g
           fill="none"
           stroke="#d6992e"

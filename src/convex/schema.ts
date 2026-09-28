@@ -82,6 +82,9 @@ const schema = defineSchema(
       notifSeenTs: v.optional(v.number()),
       // نوع شغل کارمند (مثلا ویزیتور، انباردار، حسابدار)
       jobTitle: v.optional(v.string()),
+      // انتخاب شخصی تم رنگی و دارک‌مود هر کاربر
+      themeColor: v.optional(v.string()),
+      themeDark: v.optional(v.boolean()),
     }).index("email", ["email"]),
 
     /** singleton row: factory owner + bootstrap state */

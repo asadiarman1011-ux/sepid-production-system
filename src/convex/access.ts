@@ -149,7 +149,7 @@ export const listUsers = query({
   },
 });
 
-/** ثبت/ویرایش نام و نوع شغل کاربر فعلی */
+/** ثبت/ویرایش نام و نوع شغل کاربر فعلی (همه کاربران، بدون نیاز به نقش) */
 export const updateProfile = mutation({
   args: {
     name: v.string(),
@@ -158,6 +158,24 @@ export const updateProfile = mutation({
   handler: async (ctx, { name, jobTitle }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("اول وارد شوید");
+    await ctx.db.patch(userId, { name, jobTitle });
+    return { ok: true };
+  },
+});
+
+/** رییس می‌تواند نام و شغل هر کارمند را مستقیم اصلاح کند */
+export const updateUserProfile = mutation({
+  args: {
+    userId: v.id("users"),
+    name: v.string(),
+    jobTitle: v.optional(v.string()),
+  },
+  handler: async (ctx, { userId, name, jobTitle }) => {
+    const me = await getAuthUserId(ctx);
+    const settings = await ctx.db.query("settings").collect();
+    if (me === null || settings[0]?.ownerId !== me) {
+      throw new Error("فقط رییس کارخانه می‌تواند پروفایل کارمندان را ویرایش کند");
+    }
     await ctx.db.patch(userId, { name, jobTitle });
     return { ok: true };
   },

@@ -46,6 +46,7 @@ export default function Settings() {
   const { isOwner } = useMyAccess();
   const settings = useQuery(api.appSettings.get, {});
   const update = useMutation(api.appSettings.update);
+  const setMyTheme = useMutation(api.appSettings.setMyTheme);
 
   const [factoryName, setFactoryName] = useState("");
   const [defaultCity, setDefaultCity] = useState("");
@@ -69,7 +70,7 @@ export default function Settings() {
       setAddress(settings.address ?? "");
       setLowStockThreshold(settings.lowStockThreshold ?? 5);
       setMethods(settings.deliveryMethods ?? ["حضوری", "اسنپ", "باربری", "پست"]);
-      // دارک مود از تنظیمات (فقط اگر localStorage خالی باشد تا انتخاب محلی پایدار بماند)
+      // دارک مود و تم از انتخاب شخصی کاربر (سرور) یا localStorage
       const stored = (() => {
         try {
           return localStorage.getItem("dark-mode");
@@ -78,14 +79,16 @@ export default function Settings() {
         }
       })();
       if (stored === null) {
-        const serverDark = settings.darkMode ?? false;
-        setDarkMode(serverDark);
-        document.documentElement.classList.toggle("dark", serverDark);
+        const sd = settings.darkMode ?? false;
+        setDarkMode(sd);
+        document.documentElement.classList.toggle("dark", sd);
       } else {
         setDarkMode(stored === "1");
       }
       try {
-        setColorTheme(localStorage.getItem("color-theme") ?? "navy");
+        const lt = localStorage.getItem("color-theme");
+        setColorTheme(lt ?? "navy");
+        document.documentElement.setAttribute("data-theme", lt ?? "navy");
       } catch {
         /* noop */
       }
@@ -309,6 +312,7 @@ export default function Settings() {
                   key={t.id}
                   type="button"
                   onClick={() => {
+                    // اعمال فوری + ذخیره محلی + ذخیره سراسری برای این کاربر
                     setColorTheme(t.id);
                     document.documentElement.setAttribute("data-theme", t.id);
                     try {
@@ -316,6 +320,7 @@ export default function Settings() {
                     } catch {
                       /* noop */
                     }
+                    setMyTheme({ colorTheme: t.id }).catch(() => {});
                   }}
                   className={`flex items-center gap-2.5 rounded-xl border-2 p-3 text-right text-sm font-bold transition-all ${
                     colorTheme === t.id
@@ -358,7 +363,7 @@ export default function Settings() {
                   } catch {
                     /* noop */
                   }
-                  update({ darkMode: on }).catch(() => {});
+                  setMyTheme({ darkMode: on }).catch(() => {});
                 }}
               />
             </div>

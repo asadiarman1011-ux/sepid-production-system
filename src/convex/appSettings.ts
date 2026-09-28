@@ -18,6 +18,7 @@ export const get = query({
         phone: "",
         address: "",
         darkMode: false,
+        colorTheme: "navy",
         updatedAtTs: 0,
       }
     );
@@ -35,6 +36,7 @@ export const update = mutation({
     phone: v.optional(v.string()),
     address: v.optional(v.string()),
     darkMode: v.optional(v.boolean()),
+    colorTheme: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -49,6 +51,27 @@ export const update = mutation({
     } else {
       await ctx.db.insert("appSettings", patch);
     }
+    return { ok: true };
+  },
+});
+
+/**
+ * انتخاب تم/دارک شخصی هر کاربر — همه کاربران لاگین‌شده بدون خطای دسترسی.
+ * تم روی خود کاربر ذخیره می‌شود تا هر کس هرجا که دسترسی دارد بتواند تم خودش را عوض کند.
+ */
+export const setMyTheme = mutation({
+  args: {
+    colorTheme: v.optional(v.string()),
+    darkMode: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { colorTheme, darkMode }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("اول وارد شوید");
+    const patch: { themeColor?: string; themeDark?: boolean } = {};
+    if (colorTheme !== undefined) patch.themeColor = colorTheme;
+    if (darkMode !== undefined) patch.themeDark = darkMode;
+    if (Object.keys(patch).length === 0) return { ok: true };
+    await ctx.db.patch(userId, patch);
     return { ok: true };
   },
 });

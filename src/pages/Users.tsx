@@ -53,6 +53,36 @@ export default function Users() {
   const deleteRole = useMutation(api.access.deleteRole);
   const setUserRole = useMutation(api.access.setUserRole);
   const removeEmployee = useMutation(api.access.removeEmployee);
+  const updateUserProfile = useMutation(api.access.updateUserProfile);
+
+  // ویرایش نام/شغل کارمند
+  const [profileFor, setProfileFor] = useState<{ _id: string; name: string; jobTitle: string } | null>(null);
+  const [pfName, setPfName] = useState("");
+  const [pfJob, setPfJob] = useState("");
+
+  function openProfileEdit(u: { _id: string; name?: string; jobTitle?: string | null }) {
+    setProfileFor({ _id: u._id, name: u.name ?? "", jobTitle: u.jobTitle ?? "" });
+    setPfName(u.name ?? "");
+    setPfJob(u.jobTitle ?? "");
+  }
+
+  async function handleProfileSave() {
+    if (!profileFor || !pfName.trim()) {
+      toast.error("نام را وارد کنید");
+      return;
+    }
+    try {
+      await updateUserProfile({
+        userId: profileFor._id as never,
+        name: pfName.trim(),
+        jobTitle: pfJob.trim() || undefined,
+      });
+      toast.success("پروفایل کارمند ذخیره شد");
+      setProfileFor(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "خطا");
+    }
+  }
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<RoleDoc | null>(null);
@@ -165,6 +195,15 @@ export default function Users() {
                       <div className="flex shrink-0 items-center gap-2">
                         {!u.isOwner && (
                           <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              title="ویرایش نام و شغل"
+                              onClick={() => openProfileEdit(u)}
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
                             <select
                               className="h-9 max-w-36 rounded-lg border-2 bg-background px-2 text-xs font-medium"
                               value={u.roleId ?? ""}
@@ -290,6 +329,36 @@ export default function Users() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Profile edit dialog */}
+      <Dialog open={profileFor != null} onOpenChange={(o) => !o && setProfileFor(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>ویرایش نام و شغل کارمند</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div>
+              <Label className="mb-1.5 text-sm font-semibold">نام و نام خانوادگی</Label>
+              <Input
+                value={pfName}
+                onChange={(e) => setPfName(e.target.value)}
+                placeholder="مثلا: رضا محمدی"
+                className="h-11 border-2"
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 text-sm font-semibold">نوع شغل</Label>
+              <Input
+                value={pfJob}
+                onChange={(e) => setPfJob(e.target.value)}
+                placeholder="مثلا: ویزیتور فروش"
+                className="h-11 border-2"
+              />
+            </div>
+            <Button onClick={handleProfileSave}>ذخیره</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Role dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
