@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { formatJalali } from "./lib";
+import { requireEdit } from "./perms";
 import type { OrderItem } from "./schema";
 
 /** جمع تعداد یک قلم با تفکیک سایز */
@@ -133,6 +134,7 @@ export const create = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireEdit(ctx, "orders");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
 
@@ -245,6 +247,7 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...args }) => {
+    await requireEdit(ctx, "orders");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const order = await ctx.db.get(id);
@@ -311,6 +314,7 @@ export const updateDelivery = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { id, amount, deliveryFee, method, notes }) => {
+    await requireEdit(ctx, "delivery");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const order = await ctx.db.get(id);
@@ -339,7 +343,7 @@ export const updateDelivery = mutation({
 export const remove = mutation({
   args: { id: v.id("orders") },
   handler: async (ctx, { id }) => {
-    await getAuthUserId(ctx);
+    await requireEdit(ctx, "orders");
     await ctx.db.delete(id);
   },
 });
@@ -354,6 +358,7 @@ export const markDelivered = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { id, amount, deliveryFee, method, notes }) => {
+    await requireEdit(ctx, "delivery");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const order = await ctx.db.get(id);

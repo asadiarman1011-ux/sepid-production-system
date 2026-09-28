@@ -27,9 +27,18 @@ const ICONS: Record<string, typeof ClipboardList> = {
 };
 
 export default function Dashboard() {
-  const { isOwner, perms } = useMyAccess();
+  const { isOwner, perms, access } = useMyAccess();
   const { money, num } = useCurrency();
   const navigate = useNavigate();
+
+  // خوش‌آمد زمان‌دار: صبح/ظهر/عصر/شب
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return "صبح بخیر";
+    if (h < 17) return "ظهر بخیر";
+    if (h < 20) return "عصر بخیر";
+    return "شب بخیر";
+  }, []);
 
   const customers = useQuery(api.customers.list, {});
   const pending = useQuery(api.orders.list, { status: "pending" });
@@ -101,9 +110,12 @@ export default function Dashboard() {
       <Card className="mb-6 overflow-hidden rounded-2xl border-0 bg-gradient-to-l from-blue-950 via-blue-800 to-blue-600 text-white shadow-lg shadow-blue-900/20">
         <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-black">مهم‌ترین کار امروز: ثبت سفارش جدید</h2>
+            <h2 className="text-xl font-black">
+              {greeting}
+              {access?.name ? `، ${access.name}` : ""} 👋
+            </h2>
             <p className="mt-1 text-sm text-blue-100">
-              فرم کامل سفارش با تفکیک سایز، محاسبه خودکار قیمت و ثبت لوکیشن روی نقشه
+              مهم‌ترین کار امروز: ثبت سفارش جدید — با تفکیک سایز و محاسبه خودکار قیمت
             </p>
           </div>
           <Button

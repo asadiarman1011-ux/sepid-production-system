@@ -17,11 +17,19 @@ import {
   MapPin,
   Moon,
   Package,
+  Palette,
   Plus,
   Save,
   Trash2,
   Truck,
 } from "lucide-react";
+
+const THEMES: { id: string; label: string; swatch: string }[] = [
+  { id: "navy", label: "سورمه‌ای (پیش‌فرض)", swatch: "bg-[#1e3a6e]" },
+  { id: "indigo", label: "بنفش سیر", swatch: "bg-[#4338ca]" },
+  { id: "teal", label: "آبی‌نفتی", swatch: "bg-[#0f766e]" },
+  { id: "graphite", label: "گرافیتی", swatch: "bg-[#3f3f46]" },
+];
 
 type AppSettings = {
   factoryName?: string;
@@ -48,6 +56,7 @@ export default function Settings() {
   const [methods, setMethods] = useState<string[]>([]);
   const [newMethod, setNewMethod] = useState("");
   const [darkMode, setDarkMode] = useState(false);
+  const [colorTheme, setColorTheme] = useState("navy");
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -74,6 +83,11 @@ export default function Settings() {
         document.documentElement.classList.toggle("dark", serverDark);
       } else {
         setDarkMode(stored === "1");
+      }
+      try {
+        setColorTheme(localStorage.getItem("color-theme") ?? "navy");
+      } catch {
+        /* noop */
       }
       setLoaded(true);
     }
@@ -276,6 +290,47 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+        {/* تم رنگی */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Palette className="size-4 text-blue-700" />
+              تم رنگی سامانه
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-3 text-xs leading-6 text-muted-foreground">
+              رنگ اصلی و سایدبار همه بخش‌ها فورا عوض می‌شود؛ انتخاب تو در همین مرورگر ذخیره می‌شود
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setColorTheme(t.id);
+                    document.documentElement.setAttribute("data-theme", t.id);
+                    try {
+                      localStorage.setItem("color-theme", t.id);
+                    } catch {
+                      /* noop */
+                    }
+                  }}
+                  className={`flex items-center gap-2.5 rounded-xl border-2 p-3 text-right text-sm font-bold transition-all ${
+                    colorTheme === t.id
+                      ? "border-blue-600 bg-blue-50 shadow-sm"
+                      : "border-border hover:border-blue-300"
+                  }`}
+                >
+                  <span className={`size-6 shrink-0 rounded-lg shadow-inner ${t.swatch}`} />
+                  {t.label}
+                  {colorTheme === t.id && <Check className="mr-auto size-4 text-blue-700" />}
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* دارک مود */}
         <Card>

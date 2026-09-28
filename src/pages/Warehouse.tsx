@@ -97,6 +97,11 @@ export default function Warehouse() {
   const [editing, setEditing] = useState<WhDoc | null>(null);
   const [logsFor, setLogsFor] = useState<WhDoc | null>(null);
   const [saving, setSaving] = useState(false);
+  // دیالوگ ورود/خروج کالا با سایز
+  const [stockFor, setStockFor] = useState<WhDoc | null>(null);
+  const [stockDelta, setStockDelta] = useState(1);
+  const [stockQty, setStockQty] = useState(1);
+  const [stockSize, setStockSize] = useState("");
 
   // form state
   const [kind, setKind] = useState<"apparel" | "material">("apparel");
@@ -308,7 +313,6 @@ export default function Warehouse() {
                     <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
                       {w.kind === "apparel" ? (
                         <>
-                          {w.productType && <span>{w.productType}</span>}
                           {w.material && <span>جنس: {w.material}</span>}
                           {w.color && <span>رنگ: {w.color}</span>}
                         </>
@@ -395,11 +399,11 @@ export default function Warehouse() {
                       variant="outline"
                       size="sm"
                       className="h-8 flex-1 gap-1"
-                      onClick={async () => {
-                        const v = prompt("چند واحد اضافه شود؟");
-                        if (!v) return;
-                        await adjustStock({ id: w._id as never, delta: Number(v) });
-                        toast.success("موجودی افزایش یافت");
+                      onClick={() => {
+                        setStockFor(w);
+                        setStockDelta(1);
+                        setStockQty(1);
+                        setStockSize("");
                       }}
                     >
                       <Plus className="size-3.5" />
@@ -409,11 +413,11 @@ export default function Warehouse() {
                       variant="outline"
                       size="sm"
                       className="h-8 flex-1 gap-1"
-                      onClick={async () => {
-                        const v = prompt("چند واحد خارج شود؟");
-                        if (!v) return;
-                        await adjustStock({ id: w._id as never, delta: -Number(v) });
-                        toast.success("موجودی کاهش یافت");
+                      onClick={() => {
+                        setStockFor(w);
+                        setStockDelta(-1);
+                        setStockQty(1);
+                        setStockSize("");
                       }}
                     >
                       <Minus className="size-3.5" />
@@ -463,10 +467,6 @@ export default function Warehouse() {
             {kind === "apparel" ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="mb-1.5 text-sm font-semibold">نوع لباس</Label>
-                    <Input value={productType} onChange={(e) => setProductType(e.target.value)} className="h-11 border-2" />
-                  </div>
                   <div>
                     <Label className="mb-1.5 text-sm font-semibold">جنس</Label>
                     <Input value={material} onChange={(e) => setMaterial(e.target.value)} className="h-11 border-2" />
@@ -665,6 +665,80 @@ export default function Warehouse() {
             <Button onClick={handleSave} disabled={saving} className="gap-2">
               {saving && <Loader2 className="size-4 animate-spin" />}
               {editing ? "ذخیره تغییرات" : "افزودن به انبار"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ورود/خروج کالا با انتخاب سایز */}
+      <Dialog open={stockFor != null} onOpenChange={(o) => !o && setStockFor(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {stockDelta > 0 ? "ورود کالا" : "خروج کالا"} — {stockFor?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            {stockFor?.kind === "apparel" && (stockFor.sizes?.length ?? 0) > 0 && (
+              <div>
+                <Label className="mb-1.5 text-sm font-semibold">
+                  کدام سایز؟
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {" "}(اگر انتخاب نکنی، جمع کل تغییر می‌کند)
+                  </span>
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {stockFor.sizes!.map((s, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setStockSize(stockSize === s.size ? "" : s.size)}
+                      className={`rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition-colors ${
+                        stockSize === s.size
+                          ? "border-blue-600 bg-blue-600 text-white"
+                          : "border-border hover:border-blue-300"
+                      }`}
+                    >
+                      {s.size}: {formatNumber(s.qty)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <Label className="mb-1.5 text-sm font-semibold">
+                تعداد {stockDelta > 0 ? "واردشده" : "خارج‌شده"}
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                value={stockQty}
+                onChange={(e) => setStockQty(Math.max(1, Number(e.target.value) || 1))}
+                className="h-11 border-2 font-bold"
+                dir="ltr"
+              />
+            </div>
+            <Button
+              onClick={async () => {
+                if (!stockFor) return;
+                try {
+                  await adjustStock({
+                    id: stockFor._id as never,
+                    delta: stockDelta * stockQty,
+                    size: stockSize.trim() || undefined,
+                  });
+                  toast.success(
+                    `${stockDelta > 0 ? "ورود" : "خروج"} ${formatNumber(stockQty)}${stockSize ? ` برای سایز ${stockSize}` : ""} ثبت شد`,
+                  );
+                  setStockFor(null);
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "خطا");
+                }
+              }}
+              className="gap-2"
+            >
+              {stockDelta > 0 ? <Plus className="size-4" /> : <Minus className="size-4" />}
+              ثبت {stockDelta > 0 ? "ورود" : "خروج"}
             </Button>
           </div>
         </DialogContent>

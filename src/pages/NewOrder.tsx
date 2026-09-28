@@ -100,7 +100,7 @@ function itemQty(it: ItemState) {
 
 export default function NewOrder() {
   const navigate = useNavigate();
-  const { isOwner, perms } = useMyAccess();
+  const { isOwner, levelOf: levelOfSection } = useMyAccess();
   const { currency, money } = useCurrency();
   const [params, setParams] = useSearchParams();
   const preselectedId = params.get("customerId");
@@ -401,7 +401,7 @@ export default function NewOrder() {
     }
   }
 
-  if (!isOwner && !perms.includes("orders")) {
+  if (!isOwner && levelOfSection("orders") === "none") {
     return (
       <AppShell title="ثبت سفارش">
         <Card>

@@ -2,6 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { requireEdit } from "./perms";
 
 function makeSearchText(c: {
   name: string;
@@ -112,6 +113,7 @@ export const create = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireEdit(ctx, "customers");
     const userId = await getAuthUserId(ctx);
     const id = await ctx.db.insert("customers", {
       ...args,
@@ -155,6 +157,7 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...args }) => {
+    await requireEdit(ctx, "customers");
     const userId = await getAuthUserId(ctx);
     const cust = await ctx.db.get(id);
     await ctx.db.patch(id, {
@@ -177,7 +180,7 @@ export const update = mutation({
 export const promoteToPermanent = mutation({
   args: { id: v.id("customers") },
   handler: async (ctx, { id }) => {
-    await getAuthUserId(ctx);
+    await requireEdit(ctx, "customers");
     await ctx.db.patch(id, { status: "permanent" });
   },
 });
@@ -193,7 +196,7 @@ export const setFollowup = mutation({
     ),
   },
   handler: async (ctx, { id, followup }) => {
-    await getAuthUserId(ctx);
+    await requireEdit(ctx, "customers");
     await ctx.db.patch(id, { followup });
   },
 });
@@ -202,7 +205,7 @@ export const setFollowup = mutation({
 export const remove = mutation({
   args: { id: v.id("customers") },
   handler: async (ctx, { id }) => {
-    await getAuthUserId(ctx);
+    await requireEdit(ctx, "customers");
     await ctx.db.delete(id);
   },
 });

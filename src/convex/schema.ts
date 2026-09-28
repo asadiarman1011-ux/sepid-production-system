@@ -104,10 +104,14 @@ const schema = defineSchema(
       updatedAtTs: v.number(),
     }),
 
-    /** permission roles; owner always has full access */
+    /** نقش‌های دسترسی؛ هر بخش یک سطح: none | view | full — رییس همیشه کامل */
     roles: defineTable({
       name: v.string(),
-      permissions: v.array(v.string()), // section ids: orders/customers/delivery/warehouse/users
+      levels: v.optional(
+        v.record(v.string(), v.union(v.literal("none"), v.literal("view"), v.literal("full"))),
+      ),
+      /** (قدیمی) فهرست ساده بخش‌ها — برای سازگاری با نقش‌های قبلی */
+      permissions: v.optional(v.array(v.string())),
       createdAtTs: v.number(),
     }),
 

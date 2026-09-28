@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { formatJalaliTime } from "./lib";
+import { requireEdit } from "./perms";
 
 const attrsValidator = v.array(
   v.object({ key: v.string(), value: v.string() }),
@@ -105,6 +106,7 @@ export const create = mutation({
     attrs: v.optional(attrsValidator),
   },
   handler: async (ctx, args) => {
+    await requireEdit(ctx, "warehouse");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const now = Date.now();
@@ -155,6 +157,7 @@ export const update = mutation({
     attrs: v.optional(attrsValidator),
   },
   handler: async (ctx, { id, ...args }) => {
+    await requireEdit(ctx, "warehouse");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const item = await ctx.db.get(id);
@@ -233,6 +236,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("warehouseItems") },
   handler: async (ctx, { id }) => {
+    await requireEdit(ctx, "warehouse");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const item = await ctx.db.get(id);
@@ -249,38 +253,70 @@ export const remove = mutation({
   },
 });
 
-/** افزودن/کم کردن موجودی (ورود/خروج کالا) */
+/** افزودن/کم کردن موجودی (ورود/خروج کالا) — با پشتیبانی سایز */
 export const adjustStock = mutation({
   args: {
     id: v.id("warehouseItems"),
     delta: v.number(),
     note: v.optional(v.string()),
+    size: v.optional(v.string()), // سایز خاص برای پوشاک
   },
-  handler: async (ctx, { id, delta, note }) => {
+  handler: async (ctx, { id, delta, note, size }) => {
+    await requireEdit(ctx, "warehouse");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const item = await ctx.db.get(id);
     if (!item) throw new Error("قلم انبار یافت نشد");
-    const newQty = Math.max(0, item.qty + delta);
-    await ctx.db.patch(id, { qty: newQty, updatedAtTs: Date.now() });
+
+    const now = Date.now();
+    const changes: { field: string; old?: string; new?: string }[] = [];
+
+    if (size && item.kind === "apparel") {
+      // تغییر موجودی یک سایز خاص + بازمحاسبه جمع کل
+      const sizes = [...(item.sizes ?? [])];
+      const idx = sizes.findIndex((s) => s.size === size);
+      if (idx === -1) {
+        if (delta > 0) {
+          sizes.push({ size, qty: delta });
+          changes.push({ field: `سایز ${size}`, new: String(delta) });
+        } else {
+          throw new Error(`سایز «${size}» در این قلم ثبت نشده است`);
+        }
+      } else {
+        const oldQty = sizes[idx].qty;
+        const newQty = Math.max(0, oldQty + delta);
+        sizes[idx] = { size, qty: newQty };
+        changes.push({ field: `سایز ${size}`, old: String(oldQty), new: String(newQty) });
+      }
+      const totalQty = sizes.reduce((s, x) => s + x.qty, 0);
+      changes.push({
+        field: "موجودی کل",
+        old: String(item.qty),
+        new: String(totalQty),
+      });
+      await ctx.db.patch(id, { sizes, qty: totalQty, updatedAtTs: now });
+    } else {
+      const newQty = Math.max(0, item.qty + delta);
+      changes.push({
+        field: note ?? (delta > 0 ? "ورود کالا" : "خروج کالا"),
+        old: String(item.qty),
+        new: String(newQty),
+      });
+      await ctx.db.patch(id, { qty: newQty, updatedAtTs: now });
+    }
+
     await ctx.db.insert("warehouseLogs", {
       itemId: id,
       itemName: item.name,
       action: "stock",
-      changes: [
-        {
-          field: note ?? (delta > 0 ? "ورود کالا" : "خروج کالا"),
-          old: String(item.qty),
-          new: String(newQty),
-        },
-      ],
+      changes,
       byName: user?.name ?? user?.email ?? undefined,
-      atTs: Date.now(),
+      atTs: now,
     });
     await ctx.runMutation(internal.notifications.pushInternal, {
       type: "warehouse",
-      title: `${delta > 0 ? "ورود" : "خروج"} کالا — ${item.name}`,
-      body: `${item.qty} → ${newQty}`, // قبلی → جدید
+      title: `${delta > 0 ? "ورود" : "خروج"} کالا — ${item.name}${size ? ` (سایز ${size})` : ""}`,
+      body: changes.map((c) => `${c.field}: ${c.old ?? "0"} → ${c.new ?? ""}`).join(" · "),
       link: "/dashboard/warehouse",
       byName: user?.name ?? user?.email ?? undefined,
     });

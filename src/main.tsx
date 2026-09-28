@@ -10,11 +10,13 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 
-/** دارک مود را قبل از رندر اعمال کن (از localStorage تا صفحه سفید نزند) */
+/** دارک مود و تم رنگی را قبل از رندر اعمال کن (از localStorage) */
 try {
   if (localStorage.getItem("dark-mode") === "1") {
     document.documentElement.classList.add("dark");
   }
+  const theme = localStorage.getItem("color-theme");
+  if (theme) document.documentElement.setAttribute("data-theme", theme);
 } catch {
   /* noop */
 }

@@ -7,7 +7,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { ProfileDialog } from "@/components/ProfileDialog";
 import { api } from "@/convex/_generated/api";
 import type { Section } from "@/convex/access";
-import { SECTIONS, canAccess } from "@/lib/sections";
+import { SECTIONS, canAccess, levelsOfRole } from "@/lib/sections";
 import { formatJalaliTime, toFaDigits } from "@/lib/jalali";
 import {
   Boxes,
@@ -51,7 +51,12 @@ export function useMyAccess() {
     access,
     isLoading: authLoading || access === undefined,
     isOwner: access?.isOwner ?? false,
-    perms: access?.role?.permissions ?? [],
+    perms: levelsOfRole(access?.role) as Record<string, string>,
+    /** سطح دسترسی یک بخش: none | view | full */
+    levelOf: (section: string) =>
+      access?.isOwner
+        ? "full"
+        : ((levelsOfRole(access?.role) as Record<string, string>)[section] ?? "none"),
   };
 }
 
@@ -95,7 +100,7 @@ export function AppShell({
       <Link to="/dashboard" className="relative mb-6 flex items-center gap-3 px-2">
         <BrandLogo boxClassName="size-11" />
         <div>
-          <div className="text-sm font-black text-white">سپید</div>
+          <div className="text-sm font-black text-white">سامانه سپید</div>
           <div className="text-[11px] text-blue-200/70">
             تولیدی پوشاک سپید
           </div>

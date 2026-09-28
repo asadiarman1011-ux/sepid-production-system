@@ -3,6 +3,8 @@ import { Settings as SettingsIcon } from "lucide-react";
 
 export { SettingsIcon };
 
+export type PermLevel = "none" | "view" | "full";
+
 export const SECTIONS: { id: Section; label: string; icon: string; path: string }[] = [
   { id: "orders", label: "ثبت سفارش", icon: "clipboard", path: "/dashboard/new-order" },
   { id: "customers", label: "مشتریان", icon: "users", path: "/dashboard/customers" },
@@ -12,12 +14,31 @@ export const SECTIONS: { id: Section; label: string; icon: string; path: string 
   { id: "settings", label: "تنظیمات", icon: "settings", path: "/dashboard/settings" },
 ];
 
-export function sectionsFor(perms: string[] | undefined): typeof SECTIONS {
-  if (!perms) return [];
-  return SECTIONS.filter((s) => perms.includes(s.id));
+/** نقش قدیمی (آرایه) یا جدید (levels) را به levels استاندارد تبدیل می‌کند */
+export function levelsOfRole(role: { levels?: unknown; permissions?: string[] } | null | undefined) {
+  if (role?.levels && typeof role.levels === "object") {
+    return role.levels as Partial<Record<Section, PermLevel>>;
+  }
+  return Object.fromEntries((role?.permissions ?? []).map((s) => [s, "full" as const])) as Partial<
+    Record<Section, PermLevel>
+  >;
 }
 
-export function canAccess(perms: string[] | undefined, section: Section) {
-  if (!perms) return false;
-  return perms.includes(section);
+export function levelOf(
+  perms: Partial<Record<Section, PermLevel>> | string[] | undefined,
+  section: Section,
+): PermLevel {
+  if (!perms) return "none";
+  if (Array.isArray(perms)) {
+    return perms.includes(section) ? "full" : "none";
+  }
+  return perms[section] ?? "none";
+}
+
+/** آیا بخش را می‌بیند؟ (view یا full) */
+export function canAccess(
+  perms: Partial<Record<Section, PermLevel>> | string[] | undefined,
+  section: Section,
+) {
+  return levelOf(perms, section) !== "none";
 }

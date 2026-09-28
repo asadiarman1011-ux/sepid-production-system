@@ -16,6 +16,14 @@ export const sectionValidator = v.union(
   ...SECTIONS.map((s) => v.literal(s)),
 );
 
+/** سطح دسترسی هر بخش: none = هیچ، view = فقط مشاهده، full = کامل */
+export type PermLevel = "none" | "view" | "full";
+export const permLevelValidator = v.union(
+  v.literal("none"),
+  v.literal("view"),
+  v.literal("full"),
+);
+
 /**
  * روح سیستم: اولین کاربری که وارد می‌شود رییس کارخانه است و به همه‌چیز دسترسی دارد.
  * بعد از آن، فقط رییس می‌تواند برای بقیه نقش و دسترسی تعیین کند.
@@ -40,7 +48,7 @@ export const ensureUserAccess = mutation({
       });
       await ctx.db.insert("roles", {
         name: "رییس کارخانه",
-        permissions: [...SECTIONS],
+        levels: Object.fromEntries(SECTIONS.map((s) => [s, "full"])),
         createdAtTs: Date.now(),
       });
     }
@@ -58,27 +66,30 @@ export const ensureUserAccess = mutation({
           .collect()
           .then(
             (rows) =>
-              rows.find((r) => r.permissions.length === SECTIONS.length) ??
-              null,
+              rows.find(
+                (r) =>
+                  (r.levels && Object.values(r.levels).every((l) => l === "full")) ||
+                  (r.permissions?.length ?? 0) === SECTIONS.length,
+              ) ?? null,
           );
         roleId =
           ownerRole?._id ??
           (await ctx.db.insert("roles", {
             name: "رییس کارخانه",
-            permissions: [...SECTIONS],
+            levels: Object.fromEntries(SECTIONS.map((s) => [s, "full"])),
             createdAtTs: Date.now(),
           }));
       } else {
-        // کاربر تازه: تا رییس نقش تعیین نکرده، فقط بخش سفارش‌ها را می‌بیند
+        // کاربر تازه: تا رییس نقش تعیین نکند، هیچ دسترسی‌ای ندارد
         const visitorRole = await ctx.db
           .query("roles")
           .collect()
-          .then((rows) => rows.find((r) => r.name === "ویزیتور"));
+          .then((rows) => rows.find((r) => r.name === "بدون دسترسی"));
         roleId =
           visitorRole?._id ??
           (await ctx.db.insert("roles", {
-            name: "ویزیتور",
-            permissions: ["orders"],
+            name: "بدون دسترسی",
+            permissions: [],
             createdAtTs: Date.now(),
           }));
       }
@@ -106,10 +117,13 @@ export const getMyAccess = query({
       role,
       email: user.email ?? null,
       name: user.name ?? null,
+      jobTitle: user.jobTitle ?? null,
       settings: settings[0] ?? null,
     };
   },
 });
+
+/** نقش «رییس کارخانه» با دسترسی full به همه بخش‌ها (تا رییس حذفش نکرده) */
 
 /** لیست همه کاربران برای پنل رییس */
 export const listUsers = query({
@@ -158,14 +172,14 @@ export const listRoles = query({
   },
 });
 
-/** ساخت یا ویرایش نقش — فقط رییس */
+/** ساخت یا ویرایش نقش با سطوح سه‌گانه — فقط رییس */
 export const upsertRole = mutation({
   args: {
     id: v.optional(v.id("roles")),
     name: v.string(),
-    permissions: v.array(sectionValidator),
+    levels: v.record(v.string(), permLevelValidator),
   },
-  handler: async (ctx, { id, name, permissions }) => {
+  handler: async (ctx, { id, name, levels }) => {
     const userId = await getAuthUserId(ctx);
     const settings = await ctx.db.query("settings").collect();
     if (userId === null || settings[0]?.ownerId !== userId) {
@@ -176,12 +190,12 @@ export const upsertRole = mutation({
       if (existing?.name === "رییس کارخانه") {
         throw new Error("دسترسی رییس کارخانه قابل تغییر نیست");
       }
-      await ctx.db.patch(id, { name, permissions });
+      await ctx.db.patch(id, { name, levels });
       return id;
     }
     return await ctx.db.insert("roles", {
       name,
-      permissions,
+      levels,
       createdAtTs: Date.now(),
     });
   },
