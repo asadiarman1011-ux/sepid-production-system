@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router";
-import { formatMoney, toFaDigits } from "@/lib/jalali";
+import { toFaDigits } from "@/lib/jalali";
+import { useCurrency } from "@/lib/currency";
 import { Loader2, PackageCheck, Search, Truck } from "lucide-react";
 
 type OrderDoc = {
@@ -44,6 +45,7 @@ type OrderDoc = {
     material?: string;
     color?: string;
     size?: string;
+    sizes?: { size: string; qty: number }[];
     qty: number;
     unitPrice: number;
   }[];
@@ -71,6 +73,7 @@ export default function Delivery() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<OrderDoc | null>(null);
+  const { currency, money } = useCurrency();
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 300);
@@ -180,7 +183,7 @@ export default function Delivery() {
                   </span>
                 </div>
                 <div className="mt-auto flex items-center justify-between border-t pt-3">
-                  <span className="text-sm font-black text-blue-700">{formatMoney(o.total)}</span>
+                  <span className="text-sm font-black text-blue-700">{money(o.total)}</span>
                   {o.status === "pending" ? (
                     <Button
                       size="sm"
@@ -213,7 +216,7 @@ export default function Delivery() {
           </DialogHeader>
           <div className="grid gap-4">
             <div>
-              <Label className="mb-1.5 text-sm font-semibold">مبلغ دریافتی (تومان)</Label>
+              <Label className="mb-1.5 text-sm font-semibold">مبلغ دریافتی ({currency})</Label>
               <Input
                 type="number"
                 value={amount ?? ""}
@@ -299,17 +302,19 @@ export default function Delivery() {
                         <span className="text-xs text-muted-foreground">
                           {item.material && `${item.material} · `}
                           {item.color && `${item.color} · `}
-                          {item.size && `سایز ${item.size} · `}
+                          {item.sizes && item.sizes.length > 0
+                            ? item.sizes.map((s) => `${s.size}: ${toFaDigits(s.qty)}`).join(" · ")
+                            : item.size && `سایز ${item.size} · `}
                           {toFaDigits(item.qty)} عدد
                         </span>
-                        <span className="font-bold">{formatMoney(item.unitPrice * item.qty)}</span>
+                        <span className="font-bold">{money(item.unitPrice * item.qty)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="flex items-center justify-between rounded-xl bg-blue-50 px-4 py-3">
                   <span className="font-bold">مبلغ کل سفارش</span>
-                  <span className="font-black text-blue-700">{formatMoney(detail.total)}</span>
+                  <span className="font-black text-blue-700">{money(detail.total)}</span>
                 </div>
                 {detail.delivery && (
                   <div className="rounded-xl border p-4">
@@ -317,7 +322,7 @@ export default function Delivery() {
                     <div className="grid gap-1.5 text-sm sm:grid-cols-2">
                       <div>
                         <span className="text-muted-foreground">مبلغ دریافتی: </span>
-                        <span className="font-bold">{formatMoney(detail.delivery.amount)}</span>
+                        <span className="font-bold">{money(detail.delivery.amount)}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">روش: </span>

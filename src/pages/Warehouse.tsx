@@ -22,10 +22,10 @@ import {
 } from "@/components/ui/select";
 import {
   formatJalaliTime,
-  formatMoney,
   formatNumber,
   toFaDigits,
 } from "@/lib/jalali";
+import { useCurrency } from "@/lib/currency";
 import { toast } from "sonner";
 import {
   Boxes,
@@ -88,6 +88,7 @@ function deepEqual(a: unknown, b: unknown) {
 }
 
 export default function Warehouse() {
+  const { money: whMoney } = useCurrency();
   const [tab, setTab] = useState<"apparel" | "material">("apparel");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -420,7 +421,7 @@ export default function Warehouse() {
                   </div>
                   {w.price != null && (
                     <div className="text-xs text-muted-foreground">
-                      ارزش تقریبی: {formatMoney(w.price * w.qty)}
+                      ارزش تقریبی: {whMoney(w.price * w.qty)}
                     </div>
                   )}
                 </div>

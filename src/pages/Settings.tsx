@@ -66,7 +66,7 @@ export default function Settings() {
       await update({
         factoryName: factoryName.trim() || undefined,
         defaultCity: defaultCity.trim() || undefined,
-        currency: currency.trim() || "تومان",
+        currency: currency.trim() || "تومان", // ذخیره خالی → دیفالت تومان
         phone: phone.trim() || undefined,
         address: address.trim() || undefined,
         lowStockThreshold,
@@ -150,8 +150,20 @@ export default function Settings() {
                 <Input
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
+                  placeholder="تومان / ریال"
                   className="h-11 border-2"
+                  list="currency-suggestions"
                 />
+                <datalist id="currency-suggestions">
+                  <option value="تومان" />
+                  <option value="ریال" />
+                  <option value="ت" />
+                  <option value="ریال ایران" />
+                </datalist>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  این واحد بلافاصله در همه بخش‌ها (سفارش، تحویل، مشتریان، انبار و نمودار فروش)
+                  اعمال می‌شود
+                </p>
               </div>
             </div>
             <div>

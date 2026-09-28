@@ -2,6 +2,15 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { formatJalali } from "./lib";
+import type { OrderItem } from "./schema";
+
+/** جمع تعداد یک قلم با تفکیک سایز */
+function itemQty(i: { qty?: number; sizes?: { size: string; qty: number }[] }) {
+  if (i.sizes && i.sizes.length > 0) {
+    return i.sizes.reduce((sum, s) => sum + (s.qty || 0), 0);
+  }
+  return i.qty ?? 0;
+}
 
 /** فهرست سفارش‌ها؛ جستجو و فیلتر وضعیت */
 export const list = query({
@@ -32,6 +41,11 @@ export const list = query({
       .sort((a, b) => b.dateTs - a.dateTs);
   },
 });
+
+/** تعداد و جمع نهایی سمت سرور از اقلام محاسبه می‌شود تا عدد قابل اعتماد باشد */
+function computeTotals(items: OrderItem[]) {
+  return items.reduce((sum, i) => sum + (i.unitPrice || 0) * itemQty(i), 0);
+}
 
 /** یک سفارش کامل */
 export const get = query({
@@ -133,6 +147,7 @@ export const create = mutation({
     }
 
     const orderNo = await nextOrderNo(ctx, customerId);
+    const total = computeTotals(args.items);
     const id = await ctx.db.insert("orders", {
       orderNo,
       customerId,
@@ -144,7 +159,7 @@ export const create = mutation({
       dateLabel: args.dateLabel,
       dateTs: args.dateTs,
       items: args.items,
-      total: args.total,
+      total,
       notes: args.notes,
       status: "pending",
       createdBy: userId ?? undefined,
@@ -202,5 +217,6 @@ export const markDelivered = mutation({
         byName: user?.name ?? user?.email ?? undefined,
       },
     });
+    return { ok: true };
   },
 });

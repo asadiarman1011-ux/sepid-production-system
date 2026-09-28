@@ -21,10 +21,10 @@ export function toFaDigits(s: string | number) {
   return String(s).replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
 
-/** جداکننده هزارگان + رقم فارسی */
-export function formatMoney(n: number | undefined | null) {
+/** جداکننده هزارگان + رقم فارسی + واحد پول (از تنظیمات) */
+export function formatMoney(n: number | undefined | null, currency = "تومان") {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
-  return toFaDigits(Math.round(n).toLocaleString("en-US")) + " تومان";
+  return toFaDigits(Math.round(n).toLocaleString("en-US")) + " " + (currency || "تومان");
 }
 
 export function formatNumber(n: number | undefined | null) {

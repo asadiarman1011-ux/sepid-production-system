@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SECTIONS, canAccess } from "@/lib/sections";
 import { JALALI_MONTHS, gregorianToJalali, toFaDigits, todayJalaliLabel } from "@/lib/jalali";
+import { useCurrency } from "@/lib/currency";
 import {
   Boxes,
   ClipboardList,
@@ -27,6 +28,7 @@ const ICONS: Record<string, typeof ClipboardList> = {
 
 export default function Dashboard() {
   const { isOwner, perms } = useMyAccess();
+  const { money, num } = useCurrency();
   const navigate = useNavigate();
 
   const customers = useQuery(api.customers.list, {});
@@ -62,18 +64,21 @@ export default function Dashboard() {
         value: customers ? toFaDigits(customers.length) : "…",
         icon: Users,
         path: "/dashboard/customers",
+        tint: "bg-blue-50 text-blue-700",
       },
       {
         label: "در انتظار تحویل",
         value: pending ? toFaDigits(pending.length) : "…",
         icon: Truck,
         path: "/dashboard/delivery",
+        tint: "bg-amber-50 text-amber-700",
       },
       {
         label: "تحویل داده شده",
         value: delivered ? toFaDigits(delivered.length) : "…",
         icon: ClipboardList,
         path: "/dashboard/delivery?tab=delivered",
+        tint: "bg-emerald-50 text-emerald-700",
       },
     ],
     [customers, pending, delivered],
@@ -86,24 +91,24 @@ export default function Dashboard() {
       title="پیشخوان"
       subtitle={`امروز ${toFaDigits(todayJalaliLabel())}`}
       actions={
-        <Button onClick={() => navigate("/dashboard/new-order")} className="gap-2">
+        <Button onClick={() => navigate("/dashboard/new-order")} className="gap-2 shadow-md shadow-blue-600/20">
           <Plus className="size-4" />
           سفارش جدید
         </Button>
       }
     >
       {/* Hero CTA */}
-      <Card className="mb-6 overflow-hidden border-0 bg-gradient-to-l from-blue-700 via-blue-600 to-blue-500 text-white">
+      <Card className="mb-6 overflow-hidden rounded-2xl border-0 bg-gradient-to-l from-blue-950 via-blue-800 to-blue-600 text-white shadow-lg shadow-blue-900/20">
         <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-black">مهم‌ترین کار امروز: ثبت سفارش جدید</h2>
             <p className="mt-1 text-sm text-blue-100">
-              فرم کامل سفارش با محاسبه خودکار قیمت و ثبت لوکیشن روی نقشه
+              فرم کامل سفارش با تفکیک سایز، محاسبه خودکار قیمت و ثبت لوکیشن روی نقشه
             </p>
           </div>
           <Button
             size="lg"
-            className="shrink-0 gap-2 bg-white font-black text-blue-700 hover:bg-blue-50"
+            className="shrink-0 gap-2 bg-white font-black text-blue-800 shadow-md hover:bg-blue-50"
             onClick={() => navigate("/dashboard/new-order")}
           >
             <ClipboardList className="size-5" />
@@ -116,9 +121,9 @@ export default function Dashboard() {
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         {stats.map((s) => (
           <Link key={s.label} to={s.path}>
-            <Card className="transition-shadow hover:shadow-md">
+            <Card className="group rounded-2xl border-border/70 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
               <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${s.tint}`}>
                   <s.icon className="size-5" />
                 </div>
                 <div>
@@ -131,25 +136,42 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {/* Sales total banner */}
+      <Card className="mb-6 rounded-2xl border-border/70 bg-gradient-to-l from-blue-50 via-background to-background shadow-sm">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+          <div>
+            <div className="text-xs text-muted-foreground">مجموع فروش ثبت‌شده (همه سفارش‌ها)</div>
+            <div className="mt-1 text-2xl font-black text-blue-800">
+              {allOrders ? money(allOrders.reduce((s, o) => s + o.total, 0)) : "…"}
+            </div>
+          </div>
+          <div className="text-left text-xs leading-6 text-muted-foreground">
+            <div>واحد پول از تنظیمات خوانده می‌شود</div>
+            <div>مبالغ با اعداد فارسی نمایش داده می‌شوند</div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Sections grid */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {sections.map((s) => {
           const Icon = ICONS[s.icon] ?? ClipboardList;
           return (
             <Link key={s.id} to={s.path}>
-              <Card className="group h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
+              <Card className="group h-full rounded-2xl border-border/70 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
                 <CardContent className="flex items-start gap-3 p-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground group-hover:bg-blue-50 group-hover:text-blue-700">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground transition-colors group-hover:bg-blue-600 group-hover:text-white">
                     <Icon className="size-5" />
                   </div>
                   <div>
                     <div className="font-bold group-hover:text-blue-700">{s.label}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
-                      {s.id === "orders" && "فرم ثبت سفارش کامل با قیمت و لوکیشن"}
+                      {s.id === "orders" && "فرم ثبت سفارش با تفکیک سایز و قیمت"}
                       {s.id === "customers" && "ثابت، غیرثابت، پیگیری، تاریخچه خرید"}
                       {s.id === "delivery" && "در انتظار تحویل و تحویل داده شده"}
                       {s.id === "warehouse" && "پوشاک و مواد اولیه با تاریخچه"}
                       {s.id === "users" && "نقش‌ها و دسترسی کارمندان"}
+                      {s.id === "settings" && "واحد پول، روش‌های تحویل، اطلاعات کارخانه"}
                     </div>
                   </div>
                 </CardContent>
@@ -160,7 +182,7 @@ export default function Dashboard() {
       </div>
 
       {/* Sales chart (last 6 jalali months) */}
-      <Card className="mt-6">
+      <Card className="mt-6 rounded-2xl border-border/70 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">تحلیل فروش ۶ ماه اخیر</CardTitle>
         </CardHeader>
@@ -180,11 +202,11 @@ export default function Dashboard() {
                 />
                 <YAxis
                   tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(v: number) => toFaDigits(v.toLocaleString("en-US"))}
+                  tickFormatter={(v: number) => num(v)}
                   width={64}
                 />
                 <Tooltip
-                  formatter={(v: number | string) => [toFaDigits(Number(v).toLocaleString("en-US")) + " تومان", "فروش"]}
+                  formatter={(v: number | string) => [money(Number(v)), "فروش"]}
                   labelFormatter={(l: string) => l}
                   contentStyle={{
                     direction: "rtl",

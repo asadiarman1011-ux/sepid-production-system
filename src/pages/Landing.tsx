@@ -88,16 +88,18 @@ export default function Landing() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(600px 300px at 85% 10%, rgba(225,29,72,0.10), transparent), radial-gradient(500px 260px at 10% 20%, rgba(225,29,72,0.06), transparent)",
+              "radial-gradient(600px 300px at 85% 10%, rgba(37,99,235,0.14), transparent), radial-gradient(500px 260px at 10% 20%, rgba(30,58,138,0.10), transparent)",
           }}
         />
         <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-20 text-center lg:py-28">
           <Badge variant="outline" className="gap-1.5 border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             سامانه فروش کارخانه‌های بزرگ پوشاک
           </Badge>
-          <h1 className="max-w-3xl text-4xl font-black leading-[1.25] lg:text-5xl">
+          <h1 className="max-w-3xl bg-gradient-to-l from-blue-950 via-blue-800 to-blue-600 bg-clip-text text-4xl font-black leading-[1.25] text-transparent lg:text-5xl">
             مدیریت کامل فروش، سفارش، تحویل و انبار
-            <span className="block text-blue-600">در یک سامانه واحد</span>
+            <span className="mt-1 block bg-gradient-to-l from-blue-600 to-sky-500 bg-clip-text text-transparent">
+              در یک سامانه واحد
+            </span>
           </h1>
           <p className="max-w-2xl text-base leading-8 text-muted-foreground">
             سامانه اختصاصی «تولیدی پوشاک سپید» برای مدیریت مشتریان، ثبت سفارش‌های ویزیتی،

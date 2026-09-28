@@ -84,8 +84,13 @@ export function AppShell({
 
   const sidebar = (
     <div className="flex h-full flex-col gap-1 overflow-y-auto p-4">
-      <Link to="/dashboard" className="mb-6 flex items-center gap-3 px-2">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-900 font-black text-white shadow-md">
+      {/* glass glow decor */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(240px_120px_at_70%_0%,rgba(96,165,250,0.25),transparent)]"
+      />
+      <Link to="/dashboard" className="relative mb-6 flex items-center gap-3 px-2">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-900 font-black text-white shadow-md ring-1 ring-white/20">
           س
         </div>
         <div>
@@ -104,18 +109,21 @@ export function AppShell({
           <Link
             key={item.id}
             to={item.path}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+            className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
               active
-                ? "bg-blue-600 text-white shadow-sm"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-900/40 ring-1 ring-blue-400/40"
                 : "text-blue-100/70 hover:bg-white/10 hover:text-white"
             }`}
           >
             <item.icon className="size-4 shrink-0" />
             {item.label}
+            {active && (
+              <span className="absolute inset-y-2 right-0 w-0.5 rounded-full bg-blue-300" aria-hidden />
+            )}
           </Link>
         );
       })}
-      <div className="mt-auto border-t border-white/10 pt-4">
+      <div className="relative mt-auto border-t border-white/10 pt-4">
         <div className="mb-3 px-2">
           <div className="truncate text-sm font-semibold text-white">
             {user?.name || user?.email || "کاربر"}
@@ -172,7 +180,7 @@ export function AppShell({
 
       <div className="lg:mr-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur lg:px-8">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/70 bg-background/80 px-4 backdrop-blur-md lg:px-8">
           <Button
             variant="ghost"
             size="icon"

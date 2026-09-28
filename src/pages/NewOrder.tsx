@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/AppShell";
 import { JalaliDateField } from "@/components/JalaliDateField";
@@ -11,12 +11,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { formatMoney, toFaDigits, todayJalaliLabel, jalaliLabelToTs } from "@/lib/jalali";
-import { BadgePlus, CheckCircle2, Loader2, Package, Plus, Trash2 } from "lucide-react";
+import { toFaDigits, todayJalaliLabel, jalaliLabelToTs } from "@/lib/jalali";
+import { useCurrency } from "@/lib/currency";
+import {
+  BadgePlus,
+  CheckCircle2,
+  Loader2,
+  Package,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
-import { useQuery } from "convex/react";
+
+type SizeRow = { size: string; qty: number };
 
 type ItemState = {
   productType: string;
@@ -34,7 +44,8 @@ type ItemState = {
   zipperPrice: number | undefined;
   pocketType: string;
   pocketPrice: number | undefined;
-  size: string;
+  useSizes: boolean;
+  sizes: SizeRow[];
   qty: number;
   unitPrice: number;
   notes: string;
@@ -56,7 +67,8 @@ const emptyItem = (): ItemState => ({
   zipperPrice: undefined,
   pocketType: "",
   pocketPrice: undefined,
-  size: "",
+  useSizes: false,
+  sizes: [],
   qty: 1,
   unitPrice: 0,
   notes: "",
@@ -74,9 +86,17 @@ function lineTotal(it: ItemState) {
   );
 }
 
+function itemQty(it: ItemState) {
+  if (it.useSizes && it.sizes.length > 0) {
+    return it.sizes.reduce((sum, s) => sum + (s.qty || 0), 0);
+  }
+  return it.qty || 0;
+}
+
 export default function NewOrder() {
   const navigate = useNavigate();
   const { isOwner, perms } = useMyAccess();
+  const { currency, money } = useCurrency();
   const [params] = useSearchParams();
   const preselectedId = params.get("customerId");
   const preselected = useQuery(
@@ -127,15 +147,20 @@ export default function NewOrder() {
 
   const total = useMemo(
     () =>
-      items.reduce(
-        (sum, it) => sum + (it.unitPrice > 0 ? it.unitPrice : lineTotal(it)) * (it.qty || 0),
-        0,
-      ),
+      items.reduce((sum, it) => sum + (it.unitPrice > 0 ? it.unitPrice : lineTotal(it)) * itemQty(it), 0),
     [items],
   );
 
   function updateItem(idx: number, patch: Partial<ItemState>) {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+
+  function updateSize(idx: number, si: number, patch: Partial<SizeRow>) {
+    setItems((prev) =>
+      prev.map((it, i) =>
+        i === idx ? { ...it, sizes: it.sizes.map((s, j) => (j === si ? { ...s, ...patch } : s)) } : it,
+      ),
+    );
   }
 
   function learnPresets(it: ItemState) {
@@ -147,7 +172,9 @@ export default function NewOrder() {
     if (it.buttonType) upsertPreset({ category: "buttonType", value: it.buttonType, price: it.buttonPrice });
     if (it.zipperType) upsertPreset({ category: "zipperType", value: it.zipperType, price: it.zipperPrice });
     if (it.pocketType) upsertPreset({ category: "pocketType", value: it.pocketType, price: it.pocketPrice });
-    if (it.size) upsertPreset({ category: "size", value: it.size });
+    for (const s of it.sizes) {
+      if (s.size.trim()) upsertPreset({ category: "size", value: s.size.trim() });
+    }
     if (header.city) upsertPreset({ category: "city", value: header.city });
   }
 
@@ -160,7 +187,12 @@ export default function NewOrder() {
       toast.error("شماره تماس را وارد کنید");
       return;
     }
-    const validItems = items.filter((it) => it.productType.trim() && it.qty > 0);
+    const validItems = items.filter(
+      (it) =>
+        it.productType.trim() &&
+        itemQty(it) > 0 &&
+        (!it.useSizes || it.sizes.every((s) => s.size.trim() && s.qty > 0)),
+    );
     if (validItems.length === 0) {
       toast.error("حداقل یک محصول با «نوع محصول» و «تعداد» وارد کنید");
       return;
@@ -192,8 +224,12 @@ export default function NewOrder() {
           zipperPrice: it.zipperPrice,
           pocketType: it.pocketType.trim() || undefined,
           pocketPrice: it.pocketPrice,
-          size: it.size.trim() || undefined,
-          qty: it.qty,
+          size: undefined,
+          sizes:
+            it.useSizes && it.sizes.length > 0
+              ? it.sizes.map((s) => ({ size: s.size.trim(), qty: s.qty }))
+              : undefined,
+          qty: itemQty(it),
           unitPrice: it.unitPrice > 0 ? it.unitPrice : lineTotal(it),
           notes: it.notes.trim() || undefined,
         })),
@@ -225,9 +261,9 @@ export default function NewOrder() {
   return (
     <AppShell
       title="ثبت سفارش جدید"
-      subtitle="فرم کامل سفارش — محصولات، قیمت‌ها، مشتری و لوکیشن"
+      subtitle="فرم کامل سفارش — محصولات، سایزها، قیمت‌ها، مشتری و لوکیشن"
       actions={
-        <Button onClick={handleSubmit} disabled={saving} className="gap-2">
+        <Button onClick={handleSubmit} disabled={saving} className="gap-2 shadow-md shadow-blue-600/20">
           {saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
           ثبت سفارش
         </Button>
@@ -236,10 +272,12 @@ export default function NewOrder() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           {/* اطلاعات مشتری */}
-          <Card>
+          <Card className="rounded-2xl border-border/70 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Package className="size-4 text-blue-600" />
+              <CardTitle className="flex items-center gap-2.5 text-base">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                  <Package className="size-4" />
+                </span>
                 اطلاعات مشتری و سفارش
               </CardTitle>
             </CardHeader>
@@ -300,17 +338,19 @@ export default function NewOrder() {
           {/* اقلام سفارش */}
           <div className="space-y-4">
             {items.map((it, idx) => (
-              <Card key={idx} className="border-2">
+              <Card key={idx} className="rounded-2xl border-border/70 shadow-sm transition-shadow hover:shadow-md">
                 <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <BadgePlus className="size-4 text-blue-600" />
+                  <CardTitle className="flex items-center gap-2.5 text-base">
+                    <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 text-xs font-black text-white shadow-sm">
+                      {toFaDigits(idx + 1)}
+                    </span>
                     محصول {toFaDigits(idx + 1)}
                   </CardTitle>
                   {items.length > 1 && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-8 text-destructive"
+                      className="size-8 text-destructive hover:bg-destructive/10"
                       onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))}
                     >
                       <Trash2 className="size-4" />
@@ -326,7 +366,7 @@ export default function NewOrder() {
                     placeholder="کاپشن، مانتو، شلوار…"
                   />
                   <PriceInput
-                    label="قیمت محصول (تومان)"
+                    label={`قیمت محصول (${currency})`}
                     value={it.productTypePrice}
                     onChange={(n) => updateItem(idx, { productTypePrice: n })}
                   />
@@ -348,13 +388,6 @@ export default function NewOrder() {
                     label="رنگ"
                     value={it.color}
                     onChange={(v) => updateItem(idx, { color: v })}
-                    optional
-                  />
-                  <PresetInput
-                    category="size"
-                    label="سایز"
-                    value={it.size}
-                    onChange={(v) => updateItem(idx, { size: v })}
                     optional
                   />
                   <PresetInput
@@ -422,21 +455,109 @@ export default function NewOrder() {
                     onChange={(n) => updateItem(idx, { pocketPrice: n })}
                     optional
                   />
-                  <div>
-                    <Label className="mb-1.5 text-sm font-semibold">تعداد</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={it.qty}
-                      onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })}
-                      className="h-11 border-2 font-bold"
-                    />
+
+                  {/* تفکیک سایز */}
+                  <div className="sm:col-span-2 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-3.5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <Label className="flex items-center gap-2 text-sm font-semibold">
+                        <Switch
+                          checked={it.useSizes}
+                          onCheckedChange={(on) =>
+                            updateItem(idx, {
+                              useSizes: on,
+                              sizes: on && it.sizes.length === 0 ? [{ size: "", qty: 1 }] : it.sizes,
+                            })
+                          }
+                        />
+                        ثبت با تفکیک سایز
+                        <span className="text-xs font-normal text-muted-foreground">
+                          مثلا یک تی‌شرت با چند سایز مختلف
+                        </span>
+                      </Label>
+                      {it.useSizes && (
+                        <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-black text-white">
+                          جمع تعداد: {toFaDigits(itemQty(it))}
+                        </span>
+                      )}
+                    </div>
+
+                    {it.useSizes ? (
+                      <div className="mt-3 space-y-2">
+                        {it.sizes.map((s, si) => (
+                          <div key={si} className="flex items-center gap-2">
+                            <PresetInput
+                              category="size"
+                              label=""
+                              hideLabel
+                              value={s.size}
+                              onChange={(v) => updateSize(idx, si, { size: v })}
+                              placeholder="سایز (مثلا L)"
+                              className="flex-1"
+                            />
+                            <div className="w-28">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={s.qty || ""}
+                                onChange={(e) => updateSize(idx, si, { qty: Number(e.target.value) })}
+                                placeholder="تعداد"
+                                className="h-11 border-2 font-bold"
+                                dir="ltr"
+                              />
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-9 shrink-0 text-destructive hover:bg-destructive/10"
+                              onClick={() =>
+                                updateItem(idx, { sizes: it.sizes.filter((_, j) => j !== si) })
+                              }
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 border-blue-300 text-blue-700 hover:bg-blue-50"
+                          onClick={() => updateItem(idx, { sizes: [...it.sizes, { size: "", qty: 1 }] })}
+                        >
+                          <Plus className="size-3.5" />
+                          افزودن سایز
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <Label className="mb-1.5 text-sm font-semibold">تعداد</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={it.qty}
+                            onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })}
+                            className="h-11 border-2 font-bold"
+                          />
+                        </div>
+                        <PriceInput
+                          label="قیمت واحد نهایی (خودکار یا دستی)"
+                          value={it.unitPrice > 0 ? it.unitPrice : undefined}
+                          onChange={(n) => updateItem(idx, { unitPrice: n ?? 0 })}
+                        />
+                      </div>
+                    )}
+                    {it.useSizes && (
+                      <div className="mt-3">
+                        <PriceInput
+                          label="قیمت واحد نهایی هر عدد (خودکار یا دستی)"
+                          value={it.unitPrice > 0 ? it.unitPrice : undefined}
+                          onChange={(n) => updateItem(idx, { unitPrice: n ?? 0 })}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <PriceInput
-                    label="قیمت واحد نهایی (خودکار یا دستی)"
-                    value={it.unitPrice > 0 ? it.unitPrice : undefined}
-                    onChange={(n) => updateItem(idx, { unitPrice: n ?? 0 })}
-                  />
+
                   <div className="sm:col-span-2">
                     <Label className="mb-1.5 text-sm font-semibold">سایر توضیحات</Label>
                     <Textarea
@@ -446,10 +567,17 @@ export default function NewOrder() {
                       className="min-h-16 border-2"
                     />
                   </div>
-                  <div className="flex items-center justify-between rounded-xl bg-muted px-4 py-3 sm:col-span-2">
-                    <span className="text-sm font-medium">جمع این محصول</span>
+                  <div className="flex items-center justify-between rounded-xl bg-gradient-to-l from-blue-50 to-blue-100/60 px-4 py-3 sm:col-span-2">
+                    <span className="text-sm font-medium">
+                      جمع این محصول
+                      {it.useSizes && it.sizes.length > 0 && (
+                        <span className="mr-2 text-xs text-muted-foreground">
+                          ({it.sizes.filter((s) => s.size.trim()).map((s) => `${s.size}: ${toFaDigits(s.qty)}`).join(" · ")})
+                        </span>
+                      )}
+                    </span>
                     <span className="font-black text-blue-700">
-                      {formatMoney((it.unitPrice > 0 ? it.unitPrice : lineTotal(it)) * (it.qty || 0))}
+                      {money((it.unitPrice > 0 ? it.unitPrice : lineTotal(it)) * itemQty(it))}
                     </span>
                   </div>
                 </CardContent>
@@ -457,7 +585,7 @@ export default function NewOrder() {
             ))}
             <Button
               variant="outline"
-              className="w-full gap-2 border-dashed"
+              className="w-full gap-2 border-dashed border-blue-300 text-blue-700 hover:bg-blue-50"
               onClick={() => setItems((prev) => [...prev, emptyItem()])}
             >
               <Plus className="size-4" />
@@ -465,7 +593,7 @@ export default function NewOrder() {
             </Button>
           </div>
 
-          <Card>
+          <Card className="rounded-2xl border-border/70 shadow-sm">
             <CardContent className="pt-4">
               <Label className="mb-1.5 text-sm font-semibold">سایر توضیحات سفارش</Label>
               <Textarea
@@ -480,27 +608,44 @@ export default function NewOrder() {
 
         {/* خلاصه */}
         <div>
-          <Card className="sticky top-24">
+          <Card className="sticky top-24 rounded-2xl border-border/70 shadow-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">خلاصه سفارش</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {items.map((it, idx) => {
                 const unit = it.unitPrice > 0 ? it.unitPrice : lineTotal(it);
-                if (!it.productType && unit === 0) return null;
+                const q = itemQty(it);
+                if (!it.productType && unit === 0 && q === 0) return null;
                 return (
-                  <div key={idx} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate font-medium">
-                      {it.productType || "محصول"} × {toFaDigits(it.qty)}
-                    </span>
-                    <span className="shrink-0 font-bold">{formatMoney(unit * it.qty)}</span>
+                  <div key={idx} className="text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-medium">
+                        {it.productType || "محصول"} × {toFaDigits(q)}
+                      </span>
+                      <span className="shrink-0 font-bold">{money(unit * q)}</span>
+                    </div>
+                    {it.useSizes && it.sizes.some((s) => s.size.trim()) && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {it.sizes
+                          .filter((s) => s.size.trim())
+                          .map((s, si) => (
+                            <span
+                              key={si}
+                              className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800"
+                            >
+                              {s.size}: {toFaDigits(s.qty)}
+                            </span>
+                          ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
               <Separator />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-xl bg-gradient-to-l from-blue-700 to-blue-600 px-4 py-3 text-white shadow-md shadow-blue-600/25">
                 <span className="font-bold">مبلغ نهایی سفارش</span>
-                <span className="text-lg font-black text-blue-700">{formatMoney(total)}</span>
+                <span className="text-lg font-black">{money(total)}</span>
               </div>
               <div className="rounded-xl bg-muted p-3 text-xs leading-6 text-muted-foreground">
                 هر مقداری که در فرم تایپ کنید، دفعه بعد به عنوان پیش‌فرض پیشنهاد می‌شود

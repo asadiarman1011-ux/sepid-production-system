@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { JalaliDateField } from "@/components/JalaliDateField";
 import { MapPicker } from "@/components/MapPicker";
-import { formatMoney, toFaDigits } from "@/lib/jalali";
+import { toFaDigits } from "@/lib/jalali";
+import { useCurrency } from "@/lib/currency";
 import { toast } from "sonner";
 import {
   ArrowUpCircle,
@@ -497,6 +498,7 @@ export default function Customers() {
 function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
   const data = useQuery(api.customers.get, { id: id as never });
   const navigate = useNavigate();
+  const { money: customerMoney } = useCurrency();
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -582,7 +584,7 @@ function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void
                               {toFaDigits(o.dateLabel)}
                             </span>
                           </span>
-                          <span className="font-black text-blue-700">{formatMoney(o.total)}</span>
+                          <span className="font-black text-blue-700">{customerMoney(o.total)}</span>
                         </div>
                         <div className="mt-2 space-y-1.5">
                           {o.items.map((item, i) => (
@@ -593,7 +595,21 @@ function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void
                               <span className="font-bold">{item.productType}</span>
                               {item.material && <span>جنس: {item.material}</span>}
                               {item.color && <span>رنگ: {item.color}</span>}
-                              {item.size && <span>سایز: {item.size}</span>}
+                              {item.sizes && item.sizes.length > 0 ? (
+                                <span className="flex flex-wrap items-center gap-1">
+                                  سایزها:
+                                  {item.sizes.map((s, si) => (
+                                    <span
+                                      key={si}
+                                      className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800"
+                                    >
+                                      {s.size}: {toFaDigits(s.qty)}
+                                    </span>
+                                  ))}
+                                </span>
+                              ) : (
+                                item.size && <span>سایز: {item.size}</span>
+                              )}
                               {item.printFront && <span>چاپ جلو: {item.printFront}</span>}
                               {item.printBack && <span>چاپ پشت: {item.printBack}</span>}
                               <span className="font-bold text-blue-700">

@@ -41,6 +41,10 @@ export const orderItemValidator = v.object({
   pocketType: v.optional(v.string()), // نوع جیب
   pocketPrice: v.optional(v.number()),
   size: v.optional(v.string()), // سایز
+  /** تفکیک سایز: مجموع تعداد هر سایز؛ در صورت وجود، جای qty می‌نشیند */
+  sizes: v.optional(
+    v.array(v.object({ size: v.string(), qty: v.number() })),
+  ),
   qty: v.number(), // تعداد
   unitPrice: v.number(), // قیمت واحد نهایی (خودکار یا دستی)
   notes: v.optional(v.string()),

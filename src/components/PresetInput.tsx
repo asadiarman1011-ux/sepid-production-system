@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatMoney } from "@/lib/jalali";
+import { useCurrency } from "@/lib/currency";
 import { Check, ChevronDown, X } from "lucide-react";
 
 export const PRESET_CATEGORIES = [
@@ -35,6 +36,7 @@ export function PresetInput({
   placeholder,
   className,
   optional,
+  hideLabel,
 }: {
   category: PresetCategory;
   label: string;
@@ -43,10 +45,12 @@ export function PresetInput({
   placeholder?: string;
   className?: string;
   optional?: boolean;
+  hideLabel?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const presets = useQuery(api.presets.byCategory, { category }) ?? [];
   const upsert = useMutation(api.presets.upsert);
+  const { money } = useCurrency();
 
   const filtered = value
     ? presets.filter((p) => p.value.includes(value) && p.value !== value)
@@ -54,14 +58,16 @@ export function PresetInput({
 
   return (
     <div className={className}>
-      <Label className="mb-1.5 flex items-center gap-1 text-sm font-semibold">
-        {label}
-        {optional && (
-          <span className="text-xs font-normal text-muted-foreground">
-            (اختیاری)
-          </span>
-        )}
-      </Label>
+      {!hideLabel && (
+        <Label className="mb-1.5 flex items-center gap-1 text-sm font-semibold">
+          {label}
+          {optional && (
+            <span className="text-xs font-normal text-muted-foreground">
+              (اختیاری)
+            </span>
+          )}
+        </Label>
+      )}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <div className="relative">
@@ -105,7 +111,7 @@ export function PresetInput({
                 <span className="font-medium">{p.value}</span>
                 {p.price != null && (
                   <span className="text-xs text-muted-foreground">
-                    {formatMoney(p.price)}
+                    {money(p.price)}
                   </span>
                 )}
               </button>
@@ -117,7 +123,7 @@ export function PresetInput({
   );
 }
 
-/** ورودی عددی قیمت با ثبت پیش‌فرض */
+/** ورودی عددی قیمت با واحد پول تنظیمات */
 export function PriceInput({
   label,
   value,
@@ -131,6 +137,7 @@ export function PriceInput({
   optional?: boolean;
   className?: string;
 }) {
+  const { currency } = useCurrency();
   return (
     <div className={className}>
       <Label className="mb-1.5 flex items-center gap-1 text-sm font-semibold">
@@ -149,7 +156,7 @@ export function PriceInput({
         onChange={(e) =>
           onChange(e.target.value === "" ? undefined : Number(e.target.value))
         }
-        placeholder="قیمت به تومان"
+        placeholder={`قیمت به ${currency}`}
         className="h-11 border-2 text-left font-medium shadow-sm focus:border-blue-500"
         dir="ltr"
       />
