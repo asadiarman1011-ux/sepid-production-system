@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   Building2,
@@ -14,6 +15,7 @@ import {
   History,
   Loader2,
   MapPin,
+  Moon,
   Package,
   Plus,
   Save,
@@ -29,6 +31,7 @@ type AppSettings = {
   currency?: string;
   phone?: string;
   address?: string;
+  darkMode?: boolean;
 };
 
 export default function Settings() {
@@ -44,6 +47,7 @@ export default function Settings() {
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
   const [methods, setMethods] = useState<string[]>([]);
   const [newMethod, setNewMethod] = useState("");
+  const [darkMode, setDarkMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -56,6 +60,21 @@ export default function Settings() {
       setAddress(settings.address ?? "");
       setLowStockThreshold(settings.lowStockThreshold ?? 5);
       setMethods(settings.deliveryMethods ?? ["حضوری", "اسنپ", "باربری", "پست"]);
+      // دارک مود از تنظیمات (فقط اگر localStorage خالی باشد تا انتخاب محلی پایدار بماند)
+      const stored = (() => {
+        try {
+          return localStorage.getItem("dark-mode");
+        } catch {
+          return null;
+        }
+      })();
+      if (stored === null) {
+        const serverDark = settings.darkMode ?? false;
+        setDarkMode(serverDark);
+        document.documentElement.classList.toggle("dark", serverDark);
+      } else {
+        setDarkMode(stored === "1");
+      }
       setLoaded(true);
     }
   }, [settings, loaded]);
@@ -258,14 +277,47 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* انبار */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Package className="size-4 text-blue-700" />
-                انبار
-              </CardTitle>
-            </CardHeader>
+        {/* دارک مود */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Moon className="size-4 text-blue-700" />
+              حالت شب (Dark Mode)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
+              <div>
+                <div className="text-sm font-bold">فعال‌سازی حالت شب</div>
+                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                  کل سامانه با تم تیره نمایش داده می‌شود — برای کار در محیط کم‌نور
+                </p>
+              </div>
+              <Switch
+                checked={darkMode}
+                onCheckedChange={(on) => {
+                  setDarkMode(on);
+                  document.documentElement.classList.toggle("dark", on);
+                  try {
+                    localStorage.setItem("dark-mode", on ? "1" : "0");
+                  } catch {
+                    /* noop */
+                  }
+                  update({ darkMode: on }).catch(() => {});
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* انبار */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Package className="size-4 text-blue-700" />
+              انبار
+            </CardTitle>
+          </CardHeader>
             <CardContent>
               <div>
                 <Label className="mb-1.5 text-sm font-semibold">

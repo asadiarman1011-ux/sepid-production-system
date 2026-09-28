@@ -17,6 +17,7 @@ export const get = query({
         currency: "تومان",
         phone: "",
         address: "",
+        darkMode: false,
         updatedAtTs: 0,
       }
     );
@@ -33,6 +34,7 @@ export const update = mutation({
     currency: v.optional(v.string()),
     phone: v.optional(v.string()),
     address: v.optional(v.string()),
+    darkMode: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

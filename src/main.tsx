@@ -10,6 +10,15 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 
+/** دارک مود را قبل از رندر اعمال کن (از localStorage تا صفحه سفید نزند) */
+try {
+  if (localStorage.getItem("dark-mode") === "1") {
+    document.documentElement.classList.add("dark");
+  }
+} catch {
+  /* noop */
+}
+
 /**
  * Lazy import با retry خودکار: بعد از هر دیپلوی، chunkهای قدیمی از سرور پاک می‌شوند و
  * تبِ بازِ کاربر که هنوز index.html قبلی را دارد با خطای

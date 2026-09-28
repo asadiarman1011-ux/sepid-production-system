@@ -54,9 +54,11 @@ export type OrderItem = Infer<typeof orderItemValidator>;
 /** Delivery receipt filled when the order is handed over */
 export const deliveryValidator = v.object({
   amount: v.number(), // مبلغ دریافتی به ازای تحویل
+  deliveryFee: v.optional(v.number()), // هزینه تحویل (پیک/باربری)
   method: v.string(), // اسنپ / باربری / حضوری ...
   notes: v.optional(v.string()),
   dateLabel: v.string(), // شمسی
+  timeLabel: v.optional(v.string()), // ساعت ثبت تحویل
   dateTs: v.number(),
   byName: v.optional(v.string()),
 });
@@ -78,6 +80,8 @@ const schema = defineSchema(
       roleId: v.optional(v.id("roles")),
       // آخرین زمانی که کاربر اعلان‌ها را دیده (برای badge خوانده‌نشده)
       notifSeenTs: v.optional(v.number()),
+      // نوع شغل کارمند (مثلا ویزیتور، انباردار، حسابدار)
+      jobTitle: v.optional(v.string()),
     }).index("email", ["email"]),
 
     /** singleton row: factory owner + bootstrap state */
@@ -96,6 +100,7 @@ const schema = defineSchema(
       currency: v.optional(v.string()),
       phone: v.optional(v.string()),
       address: v.optional(v.string()),
+      darkMode: v.optional(v.boolean()), // حالت شب
       updatedAtTs: v.number(),
     }),
 

@@ -120,8 +120,13 @@ export default function Users() {
                     <div className="truncate text-sm font-bold">
                       {u.name || u.email || "کاربر"}
                     </div>
-                    <div className="truncate text-xs text-muted-foreground" dir="ltr">
-                      {u.email}
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      {u.jobTitle && (
+                        <span className="rounded bg-blue-50 px-1.5 py-0.5 font-bold text-blue-800">
+                          {u.jobTitle}
+                        </span>
+                      )}
+                      <span className="truncate" dir="ltr">{u.email}</span>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">

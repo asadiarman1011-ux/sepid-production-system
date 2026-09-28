@@ -4,6 +4,8 @@ import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/AppShell";
 import { OrderStatusBadge } from "@/components/status-badges";
 import { MoneyInput, thousandFa } from "@/components/PresetInput";
+import { InvoiceDialog } from "@/components/InvoiceDialog";
+import { useNavigate } from "react-router";
 import { MapView } from "@/components/MapPicker";
 import { JalaliDateField } from "@/components/JalaliDateField";
 import { Button } from "@/components/ui/button";
@@ -28,7 +30,7 @@ import { toast } from "sonner";
 import { useSearchParams } from "react-router";
 import { toFaDigits } from "@/lib/jalali";
 import { useCurrency } from "@/lib/currency";
-import { Loader2, PackageCheck, Search, Truck } from "lucide-react";
+import { Loader2, PackageCheck, Pencil, Printer, Search, Truck } from "lucide-react";
 
 type OrderDoc = {
   _id: string;
@@ -55,26 +57,37 @@ type OrderDoc = {
   status: "pending" | "delivered";
   delivery?: {
     amount: number;
+    deliveryFee?: number;
     method: string;
     notes?: string;
     dateLabel: string;
+    timeLabel?: string;
     dateTs: number;
     byName?: string;
   };
 };
 
 export default function Delivery() {
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") ?? "pending"; // pending | delivered
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [delivering, setDelivering] = useState<OrderDoc | null>(null);
   const [amount, setAmount] = useState<number | undefined>();
+  const [fee, setFee] = useState<number | undefined>();
   const [method, setMethod] = useState("حضوری");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<OrderDoc | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [editingReceipt, setEditingReceipt] = useState<OrderDoc | null>(null);
+  const [editAmount, setEditAmount] = useState<number | undefined>();
+  const [editFee, setEditFee] = useState<number | undefined>();
+  const [editMethod, setEditMethod] = useState("");
+  const [editNotes, setEditNotes] = useState("");
   const { currency, money } = useCurrency();
+  const updateDelivery = useMutation(api.orders.updateDelivery);
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 300);
@@ -89,6 +102,36 @@ export default function Delivery() {
   const appSettings = useQuery(api.appSettings.get, {});
   const deliveryMethods = appSettings?.deliveryMethods ?? ["حضوری", "اسنپ", "باربری", "پست"];
 
+  function openReceiptEdit(o: OrderDoc) {
+    if (!o.delivery) return;
+    setEditingReceipt(o);
+    setEditAmount(o.delivery.amount);
+    setEditFee(o.delivery.deliveryFee);
+    setEditMethod(o.delivery.method);
+    setEditNotes(o.delivery.notes ?? "");
+  }
+
+  async function handleReceiptSave() {
+    if (!editingReceipt) return;
+    setSaving(true);
+    try {
+      await updateDelivery({
+        id: editingReceipt._id as never,
+        amount: editAmount ?? 0,
+        deliveryFee: editFee,
+        method: editMethod,
+        notes: editNotes.trim() || undefined,
+      });
+      toast.success("رسید تحویل ویرایش شد");
+      setEditingReceipt(null);
+      setDetail(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "خطا در ویرایش رسید");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleDelivered() {
     if (!delivering) return;
     setSaving(true);
@@ -96,12 +139,14 @@ export default function Delivery() {
       await markDelivered({
         id: delivering._id as never,
         amount: amount ?? 0,
+        deliveryFee: fee,
         method,
         notes: notes.trim() || undefined,
       });
       toast.success("سفارش به بخش تحویل داده شده منتقل شد");
       setDelivering(null);
       setAmount(undefined);
+      setFee(undefined);
       setNotes("");
       setMethod("حضوری");
     } catch (err) {
@@ -198,9 +243,21 @@ export default function Delivery() {
                       تحویل داده شد
                     </Button>
                   ) : (
-                    <span className="text-xs text-muted-foreground">
-                      تحویل: {toFaDigits(o.delivery?.dateLabel ?? "")}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">
+                        {toFaDigits(o.delivery?.dateLabel ?? "")}
+                        {o.delivery?.timeLabel ? ` · ${toFaDigits(o.delivery.timeLabel)}` : ""}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        title="ویرایش رسید"
+                        onClick={() => openReceiptEdit(o)}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -221,6 +278,17 @@ export default function Delivery() {
               <MoneyInput
                 value={amount}
                 onChange={setAmount}
+                className="h-11 border-2 text-right"
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 flex items-center gap-1 text-sm font-semibold">
+                هزینه تحویل
+                <span className="text-xs font-normal text-muted-foreground">(کرایه پیک/باربری — اختیاری)</span>
+              </Label>
+              <MoneyInput
+                value={fee}
+                onChange={setFee}
                 className="h-11 border-2 text-right"
               />
             </div>
@@ -250,6 +318,48 @@ export default function Delivery() {
             <Button onClick={handleDelivered} disabled={saving} className="gap-2">
               {saving && <Loader2 className="size-4 animate-spin" />}
               تایید و انتقال به تحویل داده شده
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt edit dialog */}
+      <Dialog open={editingReceipt != null} onOpenChange={(o) => !o && setEditingReceipt(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>ویرایش رسید تحویل — {editingReceipt?.customerName}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div>
+              <Label className="mb-1.5 text-sm font-semibold">مبلغ دریافتی ({currency})</Label>
+              <MoneyInput value={editAmount} onChange={setEditAmount} className="h-11 border-2 text-right" />
+            </div>
+            <div>
+              <Label className="mb-1.5 text-sm font-semibold">هزینه تحویل</Label>
+              <MoneyInput value={editFee} onChange={setEditFee} className="h-11 border-2 text-right" />
+            </div>
+            <div>
+              <Label className="mb-1.5 text-sm font-semibold">روش تحویل</Label>
+              <Select value={editMethod} onValueChange={setEditMethod}>
+                <SelectTrigger className="h-11 border-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {deliveryMethods.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="mb-1.5 text-sm font-semibold">توضیحات</Label>
+              <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="min-h-16 border-2" />
+            </div>
+            <Button onClick={handleReceiptSave} disabled={saving} className="gap-2">
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              ذخیره تغییرات رسید
             </Button>
           </div>
         </DialogContent>
@@ -315,21 +425,63 @@ export default function Delivery() {
                   <span className="font-bold">مبلغ کل سفارش</span>
                   <span className="font-black text-blue-700">{money(detail.total)}</span>
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    onClick={() => setInvoiceId(detail._id)}
+                  >
+                    <Printer className="size-4" />
+                    پیش‌فاکتور / چاپ
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    onClick={() => navigate(`/dashboard/new-order?edit=${detail._id}`)}
+                  >
+                    <Pencil className="size-4" />
+                    ویرایش سفارش
+                  </Button>
+                </div>
                 {detail.delivery && (
                   <div className="rounded-xl border p-4">
-                    <h4 className="mb-2 font-black">رسید تحویل</h4>
+                    <div className="mb-2 flex items-center justify-between">
+                      <h4 className="font-black">رسید تحویل</h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => openReceiptEdit(detail)}
+                      >
+                        <Pencil className="size-3.5" />
+                        ویرایش رسید
+                      </Button>
+                    </div>
                     <div className="grid gap-1.5 text-sm sm:grid-cols-2">
                       <div>
                         <span className="text-muted-foreground">مبلغ دریافتی: </span>
                         <span className="font-bold">{money(detail.delivery.amount)}</span>
                       </div>
                       <div>
+                        <span className="text-muted-foreground">هزینه تحویل: </span>
+                        <span className="font-bold">
+                          {detail.delivery.deliveryFee != null ? money(detail.delivery.deliveryFee) : "—"}
+                        </span>
+                      </div>
+                      <div>
                         <span className="text-muted-foreground">روش: </span>
                         <span className="font-bold">{detail.delivery.method}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">تاریخ تحویل: </span>
-                        <span className="font-bold">{toFaDigits(detail.delivery.dateLabel)}</span>
+                        <span className="text-muted-foreground">زمان تحویل: </span>
+                        <span className="font-bold">
+                          {toFaDigits(detail.delivery.dateLabel)}
+                          {detail.delivery.timeLabel
+                            ? ` — ساعت ${toFaDigits(detail.delivery.timeLabel)}`
+                            : ""}
+                        </span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">ثبت‌کننده: </span>
@@ -348,6 +500,9 @@ export default function Delivery() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* پیش‌فاکتور */}
+      <InvoiceDialog orderId={invoiceId} onClose={() => setInvoiceId(null)} />
     </AppShell>
   );
 }

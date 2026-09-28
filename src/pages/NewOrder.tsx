@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/AppShell";
@@ -98,8 +98,14 @@ export default function NewOrder() {
   const navigate = useNavigate();
   const { isOwner, perms } = useMyAccess();
   const { currency, money } = useCurrency();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const preselectedId = params.get("customerId");
+  const editId = params.get("edit");
+  const isEditMode = Boolean(editId);
+  const existingOrder = useQuery(
+    api.orders.get,
+    editId ? { id: editId as never } : "skip",
+  );
   const preselected = useQuery(
     api.customers.get,
     preselectedId ? { id: preselectedId as never } : "skip",
@@ -119,8 +125,10 @@ export default function NewOrder() {
   const [notes, setNotes, clearNotes] = useDraft("new-order:notes", "");
   const [items, setItems, clearItems] = useDraft<ItemState[]>("new-order:items", [emptyItem()]);
   const [saving, setSaving] = useState(false);
+  const loadedEdit = useRef(false);
 
   const createOrder = useMutation(api.orders.create);
+  const updateOrder = useMutation(api.orders.update);
   const upsertPreset = useMutation(api.presets.upsert);
 
   // prefill city from settings (فقط وقتی مشتری انتخاب نشده)
@@ -130,6 +138,84 @@ export default function NewOrder() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appSettings, preselectedId]);
+
+  // بارگذاری سفارش موجود برای ویرایش
+  useEffect(() => {
+    if (existingOrder && editId && !loadedEdit.current) {
+      loadedEdit.current = true;
+      const o = existingOrder as unknown as {
+        customerName: string;
+        companyName?: string;
+        phone: string;
+        city?: string;
+        address?: string;
+        location?: { lat: number; lng: number };
+        dateLabel: string;
+        items: {
+          productType: string;
+          productTypePrice?: number;
+          material?: string;
+          materialPrice?: number;
+          color?: string;
+          printFront?: string;
+          printFrontPrice?: number;
+          printBack?: string;
+          printBackPrice?: number;
+          buttonType?: string;
+          buttonPrice?: number;
+          zipperType?: string;
+          zipperPrice?: number;
+          pocketType?: string;
+          pocketPrice?: number;
+          sizes?: { size: string; qty: number }[];
+          qty: number;
+          unitPrice: number;
+          notes?: string;
+        }[];
+        notes?: string;
+      };
+      setHeader((h) => ({
+        ...h,
+        customerName: o.customerName?.includes(" — ")
+          ? o.customerName.split(" — ")[0]
+          : (o.customerName ?? ""),
+        companyName: o.customerName?.includes(" — ")
+          ? o.customerName.split(" — ").slice(1).join(" — ")
+          : "",
+        phone: o.phone ?? "",
+        city: o.city ?? "",
+        address: o.address ?? "",
+        dateLabel: o.dateLabel,
+      }));
+      setLocation(o.location ?? null);
+      setNotes(o.notes ?? "");
+      setItems(
+        o.items.map((it) => ({
+          productType: it.productType ?? "",
+          productTypePrice: it.productTypePrice,
+          material: it.material ?? "",
+          materialPrice: it.materialPrice,
+          color: it.color ?? "",
+          printFront: it.printFront ?? "",
+          printFrontPrice: it.printFrontPrice,
+          printBack: it.printBack ?? "",
+          printBackPrice: it.printBackPrice,
+          buttonType: it.buttonType ?? "",
+          buttonPrice: it.buttonPrice,
+          zipperType: it.zipperType ?? "",
+          zipperPrice: it.zipperPrice,
+          pocketType: it.pocketType ?? "",
+          pocketPrice: it.pocketPrice,
+          useSizes: (it.sizes?.length ?? 0) > 0,
+          sizes: (it.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })),
+          qty: it.qty,
+          unitPrice: it.unitPrice,
+          notes: it.notes ?? "",
+        })),
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingOrder, editId]);
 
   // prefill from selected customer
   useEffect(() => {
@@ -203,6 +289,48 @@ export default function NewOrder() {
     }
     setSaving(true);
     try {
+      if (isEditMode && editId) {
+        await updateOrder({
+          id: editId as never,
+          customerName: header.customerName.trim() || header.companyName.trim(),
+          companyName: header.companyName.trim() || undefined,
+          phone: header.phone.trim(),
+          city: header.city.trim() || undefined,
+          address: header.address.trim() || undefined,
+          location: location ?? undefined,
+          dateLabel: header.dateLabel,
+          dateTs: jalaliLabelToTs(header.dateLabel) ?? Date.now(),
+          items: validItems.map((it) => ({
+            productType: it.productType.trim(),
+            productTypePrice: it.productTypePrice,
+            material: it.material.trim() || undefined,
+            materialPrice: it.materialPrice,
+            color: it.color.trim() || undefined,
+            printFront: it.printFront.trim() || undefined,
+            printFrontPrice: it.printFrontPrice,
+            printBack: it.printBack.trim() || undefined,
+            printBackPrice: it.printBackPrice,
+            buttonType: it.buttonType.trim() || undefined,
+            buttonPrice: it.buttonPrice,
+            zipperType: it.zipperType.trim() || undefined,
+            zipperPrice: it.zipperPrice,
+            pocketType: it.pocketType.trim() || undefined,
+            pocketPrice: it.pocketPrice,
+            size: undefined,
+            sizes:
+              it.useSizes && it.sizes.length > 0
+                ? it.sizes.map((s) => ({ size: s.size.trim(), qty: s.qty }))
+                : undefined,
+            qty: itemQty(it),
+            unitPrice: it.unitPrice > 0 ? it.unitPrice : lineTotal(it),
+            notes: it.notes.trim() || undefined,
+          })),
+          notes: notes.trim() || undefined,
+        });
+        toast.success("سفارش با موفقیت ویرایش شد");
+        navigate(-1);
+        return;
+      }
       await createOrder({
         customerId: (customerId ?? undefined) as never,
         customerName: header.customerName.trim() || header.companyName.trim(),
@@ -282,13 +410,30 @@ export default function NewOrder() {
 
   return (
     <AppShell
-      title="ثبت سفارش جدید"
-      subtitle="فرم کامل سفارش — محصولات، سایزها، قیمت‌ها، مشتری و لوکیشن"
+      title={isEditMode ? "ویرایش سفارش" : "ثبت سفارش جدید"}
+      subtitle={
+        isEditMode
+          ? "هر تغییری ذخیره شود، سفارش اصلی و رسید آن به‌روزرسانی می‌شود"
+          : "فرم کامل سفارش — محصولات، سایزها، قیمت‌ها، مشتری و لوکیشن"
+      }
       actions={
-        <Button onClick={handleSubmit} disabled={saving} className="gap-2 shadow-md shadow-blue-600/20">
-          {saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-          ثبت سفارش
-        </Button>
+        <div className="flex items-center gap-2">
+          {isEditMode && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setParams({});
+                loadedEdit.current = false;
+              }}
+            >
+              انصراف از ویرایش
+            </Button>
+          )}
+          <Button onClick={handleSubmit} disabled={saving} className="gap-2 shadow-md shadow-blue-600/20">
+            {saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+            {isEditMode ? "ذخیره تغییرات" : "ثبت سفارش"}
+          </Button>
+        </div>
       }
     >
       <div className="grid gap-6 lg:grid-cols-3">

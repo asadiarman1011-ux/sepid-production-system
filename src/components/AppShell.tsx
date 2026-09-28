@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationBell } from "@/components/NotificationBell";
+import { BrandLogo } from "@/components/BrandLogo";
+import { ProfileDialog } from "@/components/ProfileDialog";
 import { api } from "@/convex/_generated/api";
 import type { Section } from "@/convex/access";
 import { SECTIONS, canAccess } from "@/lib/sections";
@@ -91,9 +93,10 @@ export function AppShell({
         className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(240px_120px_at_70%_0%,rgba(96,165,250,0.25),transparent)]"
       />
       <Link to="/dashboard" className="relative mb-6 flex items-center gap-3 px-2">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-900 font-black text-white shadow-md ring-1 ring-white/20">
-          س
-        </div>
+        <BrandLogo
+          boxClassName="size-11 bg-white"
+          className="scale-[1.35]"
+        />
         <div>
           <div className="text-sm font-black text-white">سپید</div>
           <div className="text-[11px] text-blue-200/70">
@@ -130,9 +133,11 @@ export function AppShell({
             {user?.name || user?.email || "کاربر"}
           </div>
           <div className="truncate text-xs text-blue-200/60">
-            {isOwner
-              ? "رییس کارخانه"
-              : access?.role?.name ?? "بدون نقش"}
+            {user?.jobTitle
+              ? user.jobTitle
+              : isOwner
+                ? "رییس کارخانه"
+                : access?.role?.name ?? "بدون نقش"}
           </div>
         </div>
         <Button
@@ -215,6 +220,8 @@ export function AppShell({
           {children}
         </motion.main>
       </div>
+      {/* تکمیل پروفایل بعد از اولین ورود */}
+      <ProfileDialog />
     </div>
   );
 }

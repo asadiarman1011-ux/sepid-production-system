@@ -13,6 +13,32 @@ function itemQty(i: { qty?: number; sizes?: { size: string; qty: number }[] }) {
   return i.qty ?? 0;
 }
 
+/** ویدیتور یک قلم سفارش (مشترک بین create و update) */
+const orderItemArgs = v.object({
+  productType: v.string(),
+  productTypePrice: v.optional(v.number()),
+  material: v.optional(v.string()),
+  materialPrice: v.optional(v.number()),
+  color: v.optional(v.string()),
+  printFront: v.optional(v.string()),
+  printFrontPrice: v.optional(v.number()),
+  printBack: v.optional(v.string()),
+  printBackPrice: v.optional(v.number()),
+  buttonType: v.optional(v.string()),
+  buttonPrice: v.optional(v.number()),
+  zipperType: v.optional(v.string()),
+  zipperPrice: v.optional(v.number()),
+  pocketType: v.optional(v.string()),
+  pocketPrice: v.optional(v.number()),
+  size: v.optional(v.string()),
+  sizes: v.optional(
+    v.array(v.object({ size: v.string(), qty: v.number() })),
+  ),
+  qty: v.number(),
+  unitPrice: v.number(),
+  notes: v.optional(v.string()),
+});
+
 /** فهرست سفارش‌ها؛ جستجو و فیلتر وضعیت */
 export const list = query({
   args: {
@@ -203,6 +229,112 @@ export const create = mutation({
   },
 });
 
+/** ویرایش کامل سفارش — گذشته و حال، شامل اقلام/سایزها/قیمت‌ها/مشتری/تاریخ */
+export const update = mutation({
+  args: {
+    id: v.id("orders"),
+    customerName: v.string(),
+    companyName: v.optional(v.string()),
+    phone: v.string(),
+    city: v.optional(v.string()),
+    address: v.optional(v.string()),
+    location: v.optional(v.object({ lat: v.number(), lng: v.number() })),
+    dateLabel: v.string(),
+    dateTs: v.number(),
+    items: v.array(orderItemArgs),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, ...args }) => {
+    const userId = await getAuthUserId(ctx);
+    const user = userId ? await ctx.db.get(userId) : null;
+    const order = await ctx.db.get(id);
+    if (!order) throw new Error("سفارش یافت نشد");
+
+    const displayName = args.companyName
+      ? `${args.customerName} — ${args.companyName}`
+      : args.customerName;
+    const total = computeTotals(args.items);
+
+    await ctx.db.patch(id, {
+      customerName: displayName,
+      companyName: args.companyName,
+      phone: args.phone,
+      city: args.city,
+      address: args.address,
+      location: args.location ?? order.location,
+      dateLabel: args.dateLabel,
+      dateTs: args.dateTs,
+      items: args.items,
+      total,
+      notes: args.notes,
+      searchText: [
+        args.customerName,
+        args.companyName,
+        args.phone,
+        args.city,
+        args.address,
+        args.notes,
+        ...args.items.map((i) => i.productType),
+        ...args.items.map((i) => i.material ?? ""),
+        ...args.items.map((i) => i.color ?? ""),
+        ...args.items.map((i) => i.printFront ?? ""),
+        ...args.items.map((i) => i.printBack ?? ""),
+      ]
+        .filter(Boolean)
+        .join(" "),
+    });
+
+    // همگام‌سازی اسم/تلفن روی مشتری مربوطه
+    await ctx.db.patch(order.customerId, {
+      name: displayName,
+      phone: args.phone,
+    });
+
+    await ctx.runMutation(internal.notifications.pushInternal, {
+      type: "order",
+      title: `سفارش ویرایش شد — ${displayName}`,
+      body: `خرید شماره ${order.orderNo} به‌روزرسانی شد`,
+      link: "/dashboard/delivery",
+      byName: user?.name ?? user?.email ?? undefined,
+    });
+    return { ok: true };
+  },
+});
+
+/** ویرایش رسید تحویلِ ثبت‌شده */
+export const updateDelivery = mutation({
+  args: {
+    id: v.id("orders"),
+    amount: v.number(),
+    deliveryFee: v.optional(v.number()),
+    method: v.string(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, amount, deliveryFee, method, notes }) => {
+    const userId = await getAuthUserId(ctx);
+    const user = userId ? await ctx.db.get(userId) : null;
+    const order = await ctx.db.get(id);
+    if (!order || !order.delivery) throw new Error("رسید تحویل یافت نشد");
+    await ctx.db.patch(id, {
+      delivery: {
+        ...order.delivery,
+        amount,
+        deliveryFee,
+        method,
+        notes,
+      },
+    });
+    await ctx.runMutation(internal.notifications.pushInternal, {
+      type: "delivery",
+      title: `رسید تحویل ویرایش شد — ${order.customerName}`,
+      body: `خرید شماره ${order.orderNo}`,
+      link: "/dashboard/delivery?tab=delivered",
+      byName: user?.name ?? user?.email ?? undefined,
+    });
+    return { ok: true };
+  },
+});
+
 /** حذف سفارش */
 export const remove = mutation({
   args: { id: v.id("orders") },
@@ -217,22 +349,27 @@ export const markDelivered = mutation({
   args: {
     id: v.id("orders"),
     amount: v.number(),
+    deliveryFee: v.optional(v.number()), // هزینه تحویل
     method: v.string(),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, { id, amount, method, notes }) => {
+  handler: async (ctx, { id, amount, deliveryFee, method, notes }) => {
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const order = await ctx.db.get(id);
     if (!order) throw new Error("سفارش یافت نشد");
     const now = Date.now();
+    const d = new Date(now);
+    const timeLabel = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     await ctx.db.patch(id, {
       status: "delivered",
       delivery: {
         amount,
+        deliveryFee,
         method,
         notes,
         dateLabel: formatJalali(now),
+        timeLabel, // ساعت ثبت تحویل
         dateTs: now,
         byName: user?.name ?? user?.email ?? undefined,
       },

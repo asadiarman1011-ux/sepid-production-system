@@ -127,10 +127,25 @@ export const listUsers = query({
         _id: u._id,
         email: u.email ?? "",
         name: u.name ?? "",
+        jobTitle: u.jobTitle ?? null,
         roleId: u.roleId ?? null,
         roleName: u.roleId ? roles.find((r) => r._id === u.roleId)?.name : null,
         isOwner: settings[0]?.ownerId === u._id,
       }));
+  },
+});
+
+/** ثبت/ویرایش نام و نوع شغل کاربر فعلی */
+export const updateProfile = mutation({
+  args: {
+    name: v.string(),
+    jobTitle: v.optional(v.string()),
+  },
+  handler: async (ctx, { name, jobTitle }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("اول وارد شوید");
+    await ctx.db.patch(userId, { name, jobTitle });
+    return { ok: true };
   },
 });
 

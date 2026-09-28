@@ -29,6 +29,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { JalaliDateField } from "@/components/JalaliDateField";
+import { InvoiceDialog } from "@/components/InvoiceDialog";
+import { Pencil, Printer } from "lucide-react";
 import { MapPicker } from "@/components/MapPicker";
 import { toFaDigits } from "@/lib/jalali";
 import { useCurrency } from "@/lib/currency";
@@ -499,6 +501,7 @@ function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void
   const data = useQuery(api.customers.get, { id: id as never });
   const navigate = useNavigate();
   const { money: customerMoney } = useCurrency();
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -584,7 +587,27 @@ function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void
                               {toFaDigits(o.dateLabel)}
                             </span>
                           </span>
-                          <span className="font-black text-blue-700">{customerMoney(o.total)}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-black text-blue-700">{customerMoney(o.total)}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7"
+                              title="پیش‌فاکتور / چاپ"
+                              onClick={() => setInvoiceId(o._id)}
+                            >
+                              <Printer className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7"
+                              title="ویرایش سفارش"
+                              onClick={() => navigate(`/dashboard/new-order?edit=${o._id}`)}
+                            >
+                              <Pencil className="size-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="mt-2 space-y-1.5">
                           {o.items.map((item, i) => (
@@ -627,6 +650,8 @@ function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void
           </>
         )}
       </DialogContent>
+      {/* پیش‌فاکتور سفارش‌های این مشتری */}
+      <InvoiceDialog orderId={invoiceId} onClose={() => setInvoiceId(null)} />
     </Dialog>
   );
 }
