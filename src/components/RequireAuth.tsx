@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Lock } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 
 /**
@@ -39,7 +39,24 @@ export function RequireAuth({
   const navigate = useNavigate();
   const location = useLocation();
 
-  if (isLoading) {
+  /**
+   * دوره تحمل: وسط دیپلوی/قطع‌وصلی موقت، useConvexAuth لحظه‌ای
+   * «unauthenticated» می‌شود. اگر همان لحظه به /auth پرت کنیم، کاربر از
+   * حساب و فرمش بیرون می‌افتد. ۲ ثانیه صبر می‌کنیم؛ اگر واقعا لاگین نبود،
+   * آن‌وقت اجازه خروج می‌دهیم.
+   */
+  const [graceOver, setGraceOver] = useState(false);
+  useEffect(() => {
+    if (isLoading) return;
+    if (isAuthenticated) {
+      setGraceOver(false);
+      return;
+    }
+    const t = setTimeout(() => setGraceOver(true), 2000);
+    return () => clearTimeout(t);
+  }, [isLoading, isAuthenticated]);
+
+  if (isLoading || (!isAuthenticated && !graceOver)) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />

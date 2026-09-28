@@ -25,6 +25,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
+import { useDraft } from "@/lib/useDraft";
 
 type SizeRow = { size: string; qty: number };
 
@@ -104,7 +105,8 @@ export default function NewOrder() {
     preselectedId ? { id: preselectedId as never } : "skip",
   );
   const appSettings = useQuery(api.appSettings.get, {});
-  const [header, setHeader] = useState({
+  // پیش‌نویس: با هر رفرشِ پیش‌نمایش، همه چیز تایپ‌شده برمی‌گردد
+  const [header, setHeader, clearHeader] = useDraft("new-order:header", {
     customerName: "",
     companyName: "",
     phone: "",
@@ -114,8 +116,8 @@ export default function NewOrder() {
   });
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<ItemState[]>([emptyItem()]);
+  const [notes, setNotes, clearNotes] = useDraft("new-order:notes", "");
+  const [items, setItems, clearItems] = useDraft<ItemState[]>("new-order:items", [emptyItem()]);
   const [saving, setSaving] = useState(false);
 
   const createOrder = useMutation(api.orders.create);
@@ -240,6 +242,20 @@ export default function NewOrder() {
         notes: notes.trim() || undefined,
       });
       validItems.forEach(learnPresets);
+      // پاک‌کردن پیش‌نویس بعد از ثبت موفق
+      clearHeader();
+      clearNotes();
+      clearItems();
+      setItems([emptyItem()]);
+      setHeader({
+        customerName: "",
+        companyName: "",
+        phone: "",
+        city: "",
+        address: "",
+        dateLabel: todayJalaliLabel(),
+      });
+      setNotes("");
       const shownName = header.companyName.trim()
         ? `${header.customerName.trim()} — ${header.companyName.trim()}`
         : header.customerName.trim() || header.companyName.trim();
