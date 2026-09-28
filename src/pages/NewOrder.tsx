@@ -13,15 +13,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { OrderStatusBadge } from "@/components/status-badges";
 import { toast } from "sonner";
 import { toFaDigits, todayJalaliLabel, jalaliLabelToTs } from "@/lib/jalali";
 import { useCurrency } from "@/lib/currency";
 import {
   BadgePlus,
   CheckCircle2,
+  History as HistoryIcon,
   Loader2,
   Package,
+  Pencil,
   Plus,
+  Search,
   Trash2,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -126,6 +130,7 @@ export default function NewOrder() {
   const [items, setItems, clearItems] = useDraft<ItemState[]>("new-order:items", [emptyItem()]);
   const [saving, setSaving] = useState(false);
   const loadedEdit = useRef(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const createOrder = useMutation(api.orders.create);
   const updateOrder = useMutation(api.orders.update);
@@ -408,6 +413,10 @@ export default function NewOrder() {
     );
   }
 
+  if (showHistory) {
+    return <OrderHistory onBack={() => setShowHistory(false)} />;
+  }
+
   return (
     <AppShell
       title={isEditMode ? "ویرایش سفارش" : "ثبت سفارش جدید"}
@@ -418,6 +427,14 @@ export default function NewOrder() {
       }
       actions={
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setShowHistory(true)}
+          >
+            <HistoryIcon className="size-4" />
+            تاریخچه سفارش‌ها
+          </Button>
           {isEditMode && (
             <Button
               variant="outline"
@@ -832,6 +849,144 @@ export default function NewOrder() {
           </Card>
         </div>
       </div>
+    </AppShell>
+  );
+}
+
+/**
+ * تاریخچه سفارش‌ها: جستجو (نام/تلفن/محصول/شهر)، فیلتر وضعیت،
+ * مشاهده و ویرایش هر سفارش — گذشته و حال.
+ */
+function OrderHistory({ onBack }: { onBack: () => void }) {
+  const navigate = useNavigate();
+  const { money } = useCurrency();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "delivered">("all");
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const rows = useQuery(api.orders.list, {
+    q: search.trim() || undefined,
+    status: statusFilter === "all" ? undefined : statusFilter,
+  });
+
+  return (
+    <AppShell
+      title="تاریخچه سفارش‌ها"
+      subtitle="مشاهده، جستجو و ویرایش همه سفارش‌ها — گذشته و حال"
+      actions={
+        <Button variant="outline" onClick={onBack} className="gap-2">
+          بازگشت به فرم سفارش
+        </Button>
+      }
+    >
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="جستجو: نام مشتری، تلفن، محصول، شهر…"
+            className="h-11 border-2 pr-9"
+          />
+        </div>
+        <div className="flex gap-2">
+          {([
+            { id: "all", label: "همه" },
+            { id: "pending", label: "در انتظار تحویل" },
+            { id: "delivered", label: "تحویل داده شده" },
+          ] as const).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setStatusFilter(t.id)}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                statusFilter === t.id
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "bg-background text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!rows ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : rows.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+            <HistoryIcon className="size-10 text-muted-foreground/50" />
+            <p className="font-semibold">سفارشی یافت نشد</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {rows.map((o) => {
+            const order = o as unknown as {
+              _id: string;
+              orderNo: number;
+              customerName: string;
+              phone: string;
+              city?: string;
+              dateLabel: string;
+              total: number;
+              status: "pending" | "delivered";
+              items: { productType: string; qty: number }[];
+            };
+            return (
+              <Card
+                key={order._id}
+                className="group cursor-pointer rounded-2xl border-border/70 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                onClick={() => navigate(`/dashboard/new-order?edit=${order._id}`)}
+              >
+                <CardContent className="flex h-full flex-col gap-2.5 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-bold group-hover:text-blue-700">
+                        {order.customerName}
+                      </div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        خرید شماره {toFaDigits(order.orderNo)} · {toFaDigits(order.dateLabel)}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <OrderStatusBadge status={order.status} />
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-blue-700 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Pencil className="size-3" />
+                        ویرایش
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
+                    <span className="rounded bg-muted px-1.5 py-0.5" dir="ltr">
+                      {toFaDigits(order.phone)}
+                    </span>
+                    {order.city && (
+                      <span className="rounded bg-muted px-1.5 py-0.5">{order.city}</span>
+                    )}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {order.items.map((i) => `${i.productType} (${toFaDigits(i.qty)})`).join("، ")}
+                  </div>
+                  <div className="mt-auto flex items-center justify-between border-t pt-2.5">
+                    <span className="text-xs text-muted-foreground">
+                      {toFaDigits(order.items.length)} قلم
+                    </span>
+                    <span className="font-black text-blue-700">{money(order.total)}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </AppShell>
   );
 }

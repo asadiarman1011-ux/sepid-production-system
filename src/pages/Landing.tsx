@@ -66,7 +66,7 @@ export default function Landing() {
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <BrandLogo boxClassName="size-11" className="scale-[1.35]" />
+            <BrandLogo boxClassName="size-11" />
             <div>
               <div className="text-sm font-black">تولیدی پوشاک سپید</div>
               <div className="text-[11px] text-muted-foreground">سامانه جامع مدیریت تولید</div>

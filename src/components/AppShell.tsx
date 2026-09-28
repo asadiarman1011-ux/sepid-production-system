@@ -93,10 +93,7 @@ export function AppShell({
         className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(240px_120px_at_70%_0%,rgba(96,165,250,0.25),transparent)]"
       />
       <Link to="/dashboard" className="relative mb-6 flex items-center gap-3 px-2">
-        <BrandLogo
-          boxClassName="size-11 bg-white"
-          className="scale-[1.35]"
-        />
+        <BrandLogo boxClassName="size-11" />
         <div>
           <div className="text-sm font-black text-white">سپید</div>
           <div className="text-[11px] text-blue-200/70">
