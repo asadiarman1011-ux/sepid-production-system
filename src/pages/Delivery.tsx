@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/AppShell";
 import { OrderStatusBadge } from "@/components/status-badges";
+import { MoneyInput, thousandFa } from "@/components/PresetInput";
 import { MapView } from "@/components/MapPicker";
 import { JalaliDateField } from "@/components/JalaliDateField";
 import { Button } from "@/components/ui/button";
@@ -217,12 +218,10 @@ export default function Delivery() {
           <div className="grid gap-4">
             <div>
               <Label className="mb-1.5 text-sm font-semibold">مبلغ دریافتی ({currency})</Label>
-              <Input
-                type="number"
-                value={amount ?? ""}
-                onChange={(e) => setAmount(e.target.value === "" ? undefined : Number(e.target.value))}
+              <MoneyInput
+                value={amount}
+                onChange={setAmount}
                 className="h-11 border-2 text-right"
-                dir="ltr"
               />
             </div>
             <div>
@@ -303,7 +302,7 @@ export default function Delivery() {
                           {item.material && `${item.material} · `}
                           {item.color && `${item.color} · `}
                           {item.sizes && item.sizes.length > 0
-                            ? item.sizes.map((s) => `${s.size}: ${toFaDigits(s.qty)}`).join(" · ")
+                            ? item.sizes.map((s) => `${s.size}: ${thousandFa(s.qty)}`).join(" · ")
                             : item.size && `سایز ${item.size} · `}
                           {toFaDigits(item.qty)} عدد
                         </span>

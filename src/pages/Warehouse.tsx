@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/AppShell";
+import { MoneyInput } from "@/components/PresetInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -624,12 +625,10 @@ export default function Warehouse() {
                   </div>
                   <div>
                     <Label className="mb-1.5 text-sm font-semibold">قیمت واحد</Label>
-                    <Input
-                      type="number"
-                      value={price ?? ""}
-                      onChange={(e) => setPrice(e.target.value === "" ? undefined : Number(e.target.value))}
+                    <MoneyInput
+                      value={price}
+                      onChange={setPrice}
                       className="h-11 border-2"
-                      dir="ltr"
                     />
                   </div>
                 </div>
@@ -650,12 +649,10 @@ export default function Warehouse() {
                 </div>
                 <div>
                   <Label className="mb-1.5 text-sm font-semibold">قیمت واحد</Label>
-                  <Input
-                    type="number"
-                    value={price ?? ""}
-                    onChange={(e) => setPrice(e.target.value === "" ? undefined : Number(e.target.value))}
+                  <MoneyInput
+                    value={price}
+                    onChange={setPrice}
                     className="h-11 border-2"
-                    dir="ltr"
                   />
                 </div>
               </div>

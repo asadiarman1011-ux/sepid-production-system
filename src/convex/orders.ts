@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { formatJalali } from "./lib";
 import type { OrderItem } from "./schema";
 
@@ -69,6 +70,7 @@ export const create = mutation({
   args: {
     customerId: v.optional(v.id("customers")),
     customerName: v.string(),
+    companyName: v.optional(v.string()), // نام شرکت (جدا از نام فرد)
     phone: v.string(),
     city: v.optional(v.string()),
     address: v.optional(v.string()),
@@ -93,6 +95,9 @@ export const create = mutation({
         pocketType: v.optional(v.string()),
         pocketPrice: v.optional(v.number()),
         size: v.optional(v.string()),
+        sizes: v.optional(
+          v.array(v.object({ size: v.string(), qty: v.number() })),
+        ),
         qty: v.number(),
         unitPrice: v.number(),
         notes: v.optional(v.string()),
@@ -108,6 +113,9 @@ export const create = mutation({
     let customerId = args.customerId;
     let followup: "none" | "needs" | "following" = "needs";
     let cstatus: "permanent" | "nonpermanent" | "none" = "nonpermanent";
+    const displayName = args.companyName
+      ? `${args.customerName} — ${args.companyName}`
+      : args.customerName;
 
     if (customerId) {
       const cust = await ctx.db.get(customerId);
@@ -115,7 +123,7 @@ export const create = mutation({
         cstatus = cust.status;
         followup = cust.followup;
         await ctx.db.patch(customerId, {
-          name: args.customerName,
+          name: displayName,
           phone: args.phone,
           city: args.city ?? cust.city,
           address: args.address ?? cust.address,
@@ -124,7 +132,7 @@ export const create = mutation({
       }
     } else {
       customerId = await ctx.db.insert("customers", {
-        name: args.customerName,
+        name: displayName,
         phone: args.phone,
         city: args.city,
         craft: undefined,
@@ -134,6 +142,7 @@ export const create = mutation({
         followup,
         searchText: [
           args.customerName,
+          args.companyName,
           args.phone,
           args.city,
           args.address,
@@ -151,7 +160,8 @@ export const create = mutation({
     const id = await ctx.db.insert("orders", {
       orderNo,
       customerId,
-      customerName: args.customerName,
+      customerName: displayName,
+      companyName: args.companyName,
       phone: args.phone,
       city: args.city,
       address: args.address,
@@ -166,6 +176,7 @@ export const create = mutation({
       createdByName: user?.name ?? user?.email ?? undefined,
       searchText: [
         args.customerName,
+        args.companyName,
         args.phone,
         args.city,
         args.address,
@@ -178,6 +189,15 @@ export const create = mutation({
       ]
         .filter(Boolean)
         .join(" "),
+    });
+    // اعلان سراسری: سفارش جدید
+    const itemNames = [...new Set(args.items.map((i) => i.productType))].slice(0, 3).join("، ");
+    await ctx.runMutation(internal.notifications.pushInternal, {
+      type: "order",
+      title: `سفارش جدید برای ${displayName}`,
+      body: `خرید شماره ${orderNo} — ${itemNames}${args.items.length > 3 ? " و …" : ""}`,
+      link: "/dashboard/delivery",
+      byName: user?.name ?? user?.email ?? undefined,
     });
     return { id, orderNo };
   },
@@ -216,6 +236,14 @@ export const markDelivered = mutation({
         dateTs: now,
         byName: user?.name ?? user?.email ?? undefined,
       },
+    });
+    // اعلان سراسری: تحویل ثبت شد
+    await ctx.runMutation(internal.notifications.pushInternal, {
+      type: "delivery",
+      title: `تحویل ثبت شد — ${order.customerName}`,
+      body: `خرید شماره ${order.orderNo} · روش: ${method}`,
+      link: "/dashboard/delivery?tab=delivered",
+      byName: user?.name ?? user?.email ?? undefined,
     });
     return { ok: true };
   },

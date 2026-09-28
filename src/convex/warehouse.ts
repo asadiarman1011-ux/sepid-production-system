@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { formatJalaliTime } from "./lib";
 
 const attrsValidator = v.array(
@@ -126,6 +127,13 @@ export const create = mutation({
       byName: user?.name ?? user?.email ?? undefined,
       atTs: now,
     });
+    await ctx.runMutation(internal.notifications.pushInternal, {
+      type: "warehouse",
+      title: `${args.kind === "apparel" ? "پوشاک" : "ماده اولیه"} جدید در انبار — ${args.name}`,
+      body: `موجودی اولیه: ${totalQty} ${args.unit ?? ""}`.trim(),
+      link: "/dashboard/warehouse",
+      byName: user?.name ?? user?.email ?? undefined,
+    });
     return id;
   },
 });
@@ -211,6 +219,13 @@ export const update = mutation({
       byName: user?.name ?? user?.email ?? undefined,
       atTs: now,
     });
+    await ctx.runMutation(internal.notifications.pushInternal, {
+      type: "warehouse",
+      title: `انبار ویرایش شد — ${args.name}`,
+      body: changes.length > 0 ? changes.map((c) => c.field).join("، ") : undefined,
+      link: "/dashboard/warehouse",
+      byName: user?.name ?? user?.email ?? undefined,
+    });
   },
 });
 
@@ -261,6 +276,13 @@ export const adjustStock = mutation({
       ],
       byName: user?.name ?? user?.email ?? undefined,
       atTs: Date.now(),
+    });
+    await ctx.runMutation(internal.notifications.pushInternal, {
+      type: "warehouse",
+      title: `${delta > 0 ? "ورود" : "خروج"} کالا — ${item.name}`,
+      body: `${item.qty} → ${newQty}`, // قبلی → جدید
+      link: "/dashboard/warehouse",
+      byName: user?.name ?? user?.email ?? undefined,
     });
   },
 });

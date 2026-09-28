@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 function makeSearchText(c: {
   name: string;
@@ -112,13 +113,20 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const user = userId ? await ctx.db.get(userId) : null;
     const id = await ctx.db.insert("customers", {
       ...args,
       searchText: makeSearchText(args),
       createdBy: userId ?? undefined,
       createdAtTs: Date.now(),
       createdAtLabel: toJalaliLabel(Date.now()),
+    });
+    const user = userId ? await ctx.db.get(userId) : null;
+    await ctx.runMutation(internal.notifications.pushInternal, {
+      type: "customer",
+      title: `مشتری جدید ثبت شد — ${args.name}`,
+      body: [args.city, args.craft].filter(Boolean).join(" · ") || undefined,
+      link: "/dashboard/customers",
+      byName: user?.name ?? user?.email ?? undefined,
     });
     return id;
   },
@@ -147,11 +155,21 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...args }) => {
-    await getAuthUserId(ctx);
+    const userId = await getAuthUserId(ctx);
+    const cust = await ctx.db.get(id);
     await ctx.db.patch(id, {
       ...args,
       searchText: makeSearchText(args),
     });
+    if (cust) {
+      const user = userId ? await ctx.db.get(userId) : null;
+      await ctx.runMutation(internal.notifications.pushInternal, {
+        type: "customer",
+        title: `مشتری ویرایش شد — ${args.name}`,
+        link: "/dashboard/customers",
+        byName: user?.name ?? user?.email ?? undefined,
+      });
+    }
   },
 });
 

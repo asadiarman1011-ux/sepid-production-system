@@ -4,7 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/AppShell";
 import { JalaliDateField } from "@/components/JalaliDateField";
 import { MapPicker } from "@/components/MapPicker";
-import { PresetInput, PriceInput } from "@/components/PresetInput";
+import { PresetInput, PriceInput, MoneyInput, thousandFa } from "@/components/PresetInput";
 import { useMyAccess } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,6 +106,7 @@ export default function NewOrder() {
   const appSettings = useQuery(api.appSettings.get, {});
   const [header, setHeader] = useState({
     customerName: "",
+    companyName: "",
     phone: "",
     city: "",
     address: "",
@@ -135,7 +136,8 @@ export default function NewOrder() {
       setCustomerId(preselectedId);
       setHeader((h) => ({
         ...h,
-        customerName: c.name,
+        customerName: c.name.includes(" — ") ? c.name.split(" — ")[0] : c.name,
+        companyName: c.name.includes(" — ") ? c.name.split(" — ").slice(1).join(" — ") : "",
         phone: c.phone,
         city: c.city ?? "",
         address: c.address ?? "",
@@ -179,8 +181,8 @@ export default function NewOrder() {
   }
 
   async function handleSubmit() {
-    if (!header.customerName.trim()) {
-      toast.error("نام مشتری را وارد کنید");
+    if (!header.customerName.trim() && !header.companyName.trim()) {
+      toast.error("نام فرد یا نام شرکت را وارد کنید (حداقل یکی)");
       return;
     }
     if (!header.phone.trim()) {
@@ -201,7 +203,8 @@ export default function NewOrder() {
     try {
       await createOrder({
         customerId: (customerId ?? undefined) as never,
-        customerName: header.customerName.trim(),
+        customerName: header.customerName.trim() || header.companyName.trim(),
+        companyName: header.companyName.trim() || undefined,
         phone: header.phone.trim(),
         city: header.city.trim() || undefined,
         address: header.address.trim() || undefined,
@@ -237,7 +240,10 @@ export default function NewOrder() {
         notes: notes.trim() || undefined,
       });
       validItems.forEach(learnPresets);
-      toast.success(`سفارش برای «${header.customerName}» ثبت شد و به مشتریان اضافه شد`);
+      const shownName = header.companyName.trim()
+        ? `${header.customerName.trim()} — ${header.companyName.trim()}`
+        : header.customerName.trim() || header.companyName.trim();
+      toast.success(`سفارش برای «${shownName}» ثبت شد و به مشتریان اضافه شد`);
       navigate("/dashboard/customers");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطا در ثبت سفارش");
@@ -283,10 +289,22 @@ export default function NewOrder() {
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label className="mb-1.5 text-sm font-semibold">نام فرد یا شرکت</Label>
+                <Label className="mb-1.5 text-sm font-semibold">نام فرد</Label>
                 <Input
                   value={header.customerName}
                   onChange={(e) => setHeader((h) => ({ ...h, customerName: e.target.value }))}
+                  placeholder="مثلا: رضا محمدی"
+                  className="h-11 border-2 font-medium"
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 text-sm font-semibold">
+                  نام شرکت
+                  <span className="text-xs font-normal text-muted-foreground">(اختیاری)</span>
+                </Label>
+                <Input
+                  value={header.companyName}
+                  onChange={(e) => setHeader((h) => ({ ...h, companyName: e.target.value }))}
                   placeholder="مثلا: پوشاک البرز"
                   className="h-11 border-2 font-medium"
                 />
@@ -312,6 +330,7 @@ export default function NewOrder() {
                 label="تاریخ ثبت سفارش"
                 value={header.dateLabel}
                 onChange={(v) => setHeader((h) => ({ ...h, dateLabel: v }))}
+                className="sm:col-span-1"
               />
               <div className="sm:col-span-2">
                 <Label className="mb-1.5 text-sm font-semibold">آدرس کتبی</Label>
@@ -494,15 +513,12 @@ export default function NewOrder() {
                               placeholder="سایز (مثلا L)"
                               className="flex-1"
                             />
-                            <div className="w-28">
-                              <Input
-                                type="number"
-                                min={0}
-                                value={s.qty || ""}
-                                onChange={(e) => updateSize(idx, si, { qty: Number(e.target.value) })}
+                            <div className="w-36">
+                              <MoneyInput
+                                value={s.qty || undefined}
+                                onChange={(n) => updateSize(idx, si, { qty: n ?? 0 })}
                                 placeholder="تعداد"
-                                className="h-11 border-2 font-bold"
-                                dir="ltr"
+                                className="h-11 border-2 text-left font-bold"
                               />
                             </div>
                             <Button
@@ -572,7 +588,7 @@ export default function NewOrder() {
                       جمع این محصول
                       {it.useSizes && it.sizes.length > 0 && (
                         <span className="mr-2 text-xs text-muted-foreground">
-                          ({it.sizes.filter((s) => s.size.trim()).map((s) => `${s.size}: ${toFaDigits(s.qty)}`).join(" · ")})
+                          ({it.sizes.filter((s) => s.size.trim()).map((s) => `${s.size}: ${thousandFa(s.qty)}`).join(" · ")})
                         </span>
                       )}
                     </span>
@@ -634,7 +650,7 @@ export default function NewOrder() {
                               key={si}
                               className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800"
                             >
-                              {s.size}: {toFaDigits(s.qty)}
+                              {s.size}: {thousandFa(s.qty)}
                             </span>
                           ))}
                       </div>

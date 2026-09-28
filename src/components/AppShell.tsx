@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationBell } from "@/components/NotificationBell";
 import { api } from "@/convex/_generated/api";
 import type { Section } from "@/convex/access";
 import { SECTIONS, canAccess } from "@/lib/sections";
@@ -199,6 +200,8 @@ export function AppShell({
               </p>
             )}
           </div>
+          {/* زنگوله اعلان — قبل از اکشن‌های صفحه */}
+          <NotificationBell />
           {actions}
         </header>
 

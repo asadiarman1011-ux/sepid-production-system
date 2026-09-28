@@ -76,6 +76,8 @@ const schema = defineSchema(
       role: v.optional(roleValidator),
       // app-specific
       roleId: v.optional(v.id("roles")),
+      // آخرین زمانی که کاربر اعلان‌ها را دیده (برای badge خوانده‌نشده)
+      notifSeenTs: v.optional(v.number()),
     }).index("email", ["email"]),
 
     /** singleton row: factory owner + bootstrap state */
@@ -147,7 +149,8 @@ const schema = defineSchema(
     orders: defineTable({
       orderNo: v.number(), // شماره‌گذاری خریدها
       customerId: v.id("customers"),
-      customerName: v.string(),
+      customerName: v.string(), // نام فرد
+      companyName: v.optional(v.string()), // نام شرکت (جدا از فرد)
       phone: v.string(),
       city: v.optional(v.string()),
       address: v.optional(v.string()),
@@ -205,6 +208,17 @@ const schema = defineSchema(
         searchField: "searchText",
         filterFields: ["kind"],
       }),
+
+    /** اعلان‌های سراسری: هر ثبت/تغییر برای همه کارکنان */
+    notifications: defineTable({
+      type: v.string(), // order | delivery | customer | warehouse | role
+      title: v.string(),
+      body: v.optional(v.string()),
+      link: v.optional(v.string()),
+      byName: v.optional(v.string()),
+      createdAtTs: v.number(),
+      createdAtLabel: v.string(), // شمسی
+    }),
 
     /** تاریخچه تغییرات انبار */
     warehouseLogs: defineTable({

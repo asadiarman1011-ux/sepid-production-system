@@ -10,17 +10,46 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 
-// Lazy load route components for better code splitting
-const Landing = lazy(() => import("./pages/Landing.tsx"));
-const AuthPage = lazy(() => import("./pages/Auth.tsx"));
-const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
-const NewOrder = lazy(() => import("./pages/NewOrder.tsx"));
-const Customers = lazy(() => import("./pages/Customers.tsx"));
-const Delivery = lazy(() => import("./pages/Delivery.tsx"));
-const Warehouse = lazy(() => import("./pages/Warehouse.tsx"));
-const Users = lazy(() => import("./pages/Users.tsx"));
-const Settings = lazy(() => import("./pages/Settings.tsx"));
-const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+/**
+ * Lazy import با retry خودکار: بعد از هر دیپلوی، chunkهای قدیمی از سرور پاک می‌شوند و
+ * تبِ بازِ کاربر که هنوز index.html قبلی را دارد با خطای
+ * "Failed to fetch dynamically imported module" مواجه می‌شود.
+ * راه‌حل: یک‌بار reload سخت بزن تا index.html جدید (با نام فایل‌های جدید) لود شود.
+ */
+function lazyPage<P extends Record<string, unknown>>(
+  loader: () => Promise<{ default: React.ComponentType<P> }>,
+) {
+  return lazy(async () => {
+    try {
+      return (await loader()) as { default: React.ComponentType<Record<string, unknown>> };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isChunkError =
+        msg.includes("Failed to fetch dynamically imported module") ||
+        msg.includes("Importing a module script failed") ||
+        msg.includes("error loading dynamically imported module");
+      const key = "vly:chunk-reload-at";
+      const last = Number(sessionStorage.getItem(key) ?? 0);
+      if (isChunkError && Date.now() - last > 10000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+      }
+      throw err;
+    }
+  }) as unknown as React.ComponentType<Record<string, unknown>>;
+}
+
+// Lazy load route components for better code splitting (با خودترمیم‌سازی chunk)
+const Landing = lazyPage(() => import("./pages/Landing.tsx"));
+const AuthPage = lazyPage(() => import("./pages/Auth.tsx"));
+const Dashboard = lazyPage(() => import("./pages/Dashboard.tsx"));
+const NewOrder = lazyPage(() => import("./pages/NewOrder.tsx"));
+const Customers = lazyPage(() => import("./pages/Customers.tsx"));
+const Delivery = lazyPage(() => import("./pages/Delivery.tsx"));
+const Warehouse = lazyPage(() => import("./pages/Warehouse.tsx"));
+const Users = lazyPage(() => import("./pages/Users.tsx"));
+const Settings = lazyPage(() => import("./pages/Settings.tsx"));
+const NotFound = lazyPage(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {

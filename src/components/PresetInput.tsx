@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatMoney } from "@/lib/jalali";
+import { toFaDigits } from "@/lib/jalali";
 import { useCurrency } from "@/lib/currency";
 import { Check, ChevronDown, X } from "lucide-react";
 
@@ -114,6 +114,7 @@ export function PresetInput({
                     {money(p.price)}
                   </span>
                 )}
+                {/* عرض ستون قیمت ثابت بماند */}
               </button>
             ))}
           </div>
@@ -123,7 +124,62 @@ export function PresetInput({
   );
 }
 
-/** ورودی عددی قیمت با واحد پول تنظیمات */
+function normalizeDigits(s: string) {
+  // ارقام فارسی/عربی → لاتین
+  return s
+    .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+}
+
+/** نمایش سه‌رقمی سه‌رقمی با رقم فارسی: 1234560 → ۱٬۲۳۴٬۵۶۰ */
+export function thousandFa(n: number) {
+  return toFaDigits(Math.round(n).toLocaleString("en-US"));
+}
+
+/**
+ * ورودی قیمت بدون لیبل با جداکننده سه‌رقمی زنده.
+ * کاربر می‌تواند ارقام فارسی هم تایپ کند؛ مقدار ذخیره‌شده همیشه عدد خام است.
+ */
+export function MoneyInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: number | undefined;
+  onChange: (n: number | undefined) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [text, setText] = useState(value != null ? thousandFa(value) : "");
+
+  // اگر مقدار از بیرون عوض شد (پیش‌فرض قیمت و…)، نمایش را همگام کن
+  useEffect(() => {
+    const parsed = text ? Number(normalizeDigits(text).replace(/[^\d]/g, "")) : undefined;
+    if ((value ?? undefined) !== parsed) {
+      setText(value != null ? thousandFa(value) : "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <Input
+      inputMode="numeric"
+      value={text}
+      onChange={(e) => {
+        const digits = normalizeDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 15);
+        const n = digits === "" ? undefined : Number(digits);
+        setText(digits === "" ? "" : thousandFa(n!));
+        onChange(n);
+      }}
+      placeholder={placeholder ?? "قیمت"}
+      className={className ?? "h-11 border-2 text-left font-medium shadow-sm focus:border-blue-500"}
+      dir="ltr"
+    />
+  );
+}
+
+/** ورودی عددی قیمت با واحد پول تنظیمات + جداکننده سه‌رقمی */
 export function PriceInput({
   label,
   value,
@@ -148,17 +204,10 @@ export function PriceInput({
           </span>
         )}
       </Label>
-      <Input
-        type="number"
-        inputMode="numeric"
-        min={0}
-        value={value ?? ""}
-        onChange={(e) =>
-          onChange(e.target.value === "" ? undefined : Number(e.target.value))
-        }
+      <MoneyInput
+        value={value}
+        onChange={onChange}
         placeholder={`قیمت به ${currency}`}
-        className="h-11 border-2 text-left font-medium shadow-sm focus:border-blue-500"
-        dir="ltr"
       />
     </div>
   );
