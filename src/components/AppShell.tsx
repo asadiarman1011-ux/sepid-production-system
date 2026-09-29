@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationBell } from "@/components/NotificationBell";
-import { BrandLogo } from "@/components/BrandLogo";
 import { ProfileDialog } from "@/components/ProfileDialog";
 import { api } from "@/convex/_generated/api";
 import type { Section } from "@/convex/access";
@@ -98,7 +97,9 @@ export function AppShell({
         className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(240px_120px_at_70%_0%,rgba(96,165,250,0.25),transparent)]"
       />
       <Link to="/dashboard" className="relative mb-6 flex items-center gap-3 px-2">
-        <BrandLogo boxClassName="size-11" />
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-800 text-xl font-black text-white shadow-md ring-1 ring-white/20">
+          س
+        </span>
         <div>
           <div className="text-sm font-black text-white">سامانه سپید</div>
           <div className="text-[11px] text-blue-200/70">
@@ -117,7 +118,7 @@ export function AppShell({
             to={item.path}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
               active
-                ? "bg-blue-600 text-white shadow-md shadow-blue-900/40 ring-1 ring-blue-400/40"
+                ? "bg-blue-700 text-white shadow-md shadow-blue-900/40 ring-1 ring-blue-400/30"
                 : "text-blue-100/70 hover:bg-white/10 hover:text-white"
             }`}
           >

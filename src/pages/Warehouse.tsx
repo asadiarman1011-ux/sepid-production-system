@@ -55,6 +55,7 @@ type WhDoc = {
   sizes?: { size: string; qty: number }[];
   category?: string;
   attrs?: { key: string; value: string }[];
+  attrQty?: { key: string; value: string; qty: number }[];
   unit?: string;
   qty: number;
   minQty?: number;
@@ -71,6 +72,7 @@ type LogDoc = {
 };
 
 type Attr = { key: string; value: string };
+type AttrQty = { key: string; value: string; qty: number };
 
 const MATERIAL_CATEGORIES = [
   "پارچه",
@@ -102,6 +104,7 @@ export default function Warehouse() {
   const [stockDelta, setStockDelta] = useState(1);
   const [stockQty, setStockQty] = useState(1);
   const [stockSize, setStockSize] = useState("");
+  const [stockAttr, setStockAttr] = useState<Attr | null>(null);
 
   // form state
   const [kind, setKind] = useState<"apparel" | "material">("apparel");
@@ -269,7 +272,7 @@ export default function Warehouse() {
             onClick={() => setTab(t.id as "apparel" | "material")}
             className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
               tab === t.id
-                ? "bg-blue-600 text-white shadow-sm"
+                ? "bg-blue-700 text-white shadow-sm shadow-blue-900/30"
                 : "bg-background text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -364,14 +367,20 @@ export default function Warehouse() {
                 )}
                 {w.kind === "material" && (w.attrs?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1.5">
-                    {w.attrs!.map((a, i) => (
-                      <span
-                        key={i}
-                        className="rounded-full border bg-muted px-2.5 py-0.5 text-[11px] font-bold"
-                      >
-                        {a.key}: {a.value}
-                      </span>
-                    ))}
+                    {w.attrs!.map((a, i) => {
+                      const perQty = w.attrQty?.find(
+                        (q) => q.key === a.key && q.value === a.value,
+                      )?.qty;
+                      return (
+                        <span
+                          key={i}
+                          className="rounded-full border bg-muted px-2.5 py-0.5 text-[11px] font-bold"
+                        >
+                          {a.key === a.value ? a.value : `${a.key}: ${a.value}`}
+                          {perQty != null ? ` — ${formatNumber(perQty)}` : ""}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -404,6 +413,7 @@ export default function Warehouse() {
                         setStockDelta(1);
                         setStockQty(1);
                         setStockSize("");
+                        setStockAttr(null);
                       }}
                     >
                       <Plus className="size-3.5" />
@@ -418,6 +428,7 @@ export default function Warehouse() {
                         setStockDelta(-1);
                         setStockQty(1);
                         setStockSize("");
+                        setStockAttr(null);
                       }}
                     >
                       <Minus className="size-3.5" />
@@ -695,13 +706,49 @@ export default function Warehouse() {
                       onClick={() => setStockSize(stockSize === s.size ? "" : s.size)}
                       className={`rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition-colors ${
                         stockSize === s.size
-                          ? "border-blue-600 bg-blue-600 text-white"
+                          ? "border-blue-700 bg-blue-700 text-white"
                           : "border-border hover:border-blue-300"
                       }`}
                     >
                       {s.size}: {formatNumber(s.qty)}
                     </button>
                   ))}
+                </div>
+              </div>
+            )}
+            {stockFor?.kind === "material" && (stockFor.attrs?.length ?? 0) > 0 && (
+              <div>
+                <Label className="mb-1.5 text-sm font-semibold">
+                  کدام زیرشاخه؟
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {" "}(اگر انتخاب نکنی، جمع کل تغییر می‌کند)
+                  </span>
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {stockFor.attrs!.map((a, i) => {
+                    const perQty = (stockFor.attrQty as AttrQty[] | undefined)?.find(
+                      (q) => q.key === a.key && q.value === a.value,
+                    )?.qty;
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() =>
+                          setStockAttr(
+                            stockAttr?.key === a.key && stockAttr?.value === a.value ? null : a,
+                          )
+                        }
+                        className={`rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition-colors ${
+                          stockAttr?.key === a.key && stockAttr?.value === a.value
+                            ? "border-blue-700 bg-blue-700 text-white"
+                            : "border-border hover:border-blue-300"
+                        }`}
+                      >
+                        {a.key === a.value ? a.value : `${a.key}: ${a.value}`}
+                        {perQty != null ? `: ${formatNumber(perQty)}` : ""}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -721,7 +768,13 @@ export default function Warehouse() {
               />
               {stockFor?.kind === "material" && (
                 <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                  موجودی فعلی: {formatNumber(stockFor.qty)} {stockFor.unit ?? ""}
+                  موجودی فعلی: {formatNumber(
+                    stockAttr
+                      ? ((stockFor.attrQty as AttrQty[] | undefined)?.find(
+                          (q) => q.key === stockAttr.key && q.value === stockAttr.value,
+                        )?.qty ?? 0)
+                      : stockFor.qty,
+                  )} {stockFor.unit ?? ""}
                   {stockFor.minQty != null && stockFor.qty - (stockDelta < 0 ? stockQty : 0) <= stockFor.minQty && (
                     <span className="mr-2 font-bold text-destructive">⚠ بعد از این خروج به حد هشدار می‌رسد</span>
                   )}
@@ -736,9 +789,15 @@ export default function Warehouse() {
                     id: stockFor._id as never,
                     delta: stockDelta * stockQty,
                     size: stockSize.trim() || undefined,
+                    attrKey: stockAttr?.key,
+                    attrValue: stockAttr?.value,
                   });
+                  const attrLabel =
+                    stockAttr && (stockAttr.key !== stockAttr.value
+                      ? `${stockAttr.key}: ${stockAttr.value}`
+                      : stockAttr.value);
                   toast.success(
-                    `${stockDelta > 0 ? "ورود" : "خروج"} ${formatNumber(stockQty)} ${stockFor.unit ?? ""}${stockSize ? ` برای سایز ${stockSize}` : ""} ثبت شد`,
+                    `${stockDelta > 0 ? "ورود" : "خروج"} ${formatNumber(stockQty)} ${stockFor.unit ?? ""}${stockSize ? ` برای سایز ${stockSize}` : ""}${attrLabel ? ` برای ${attrLabel}` : ""} ثبت شد`,
                   );
                   setStockFor(null);
                 } catch (err) {

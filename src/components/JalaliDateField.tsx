@@ -148,7 +148,7 @@ export function JalaliDateField({
                   onClick={() => pick(jd)}
                   className={`h-9 rounded-md text-sm font-medium transition-colors ${
                     isSel
-                      ? "bg-blue-600 text-white"
+                      ? "bg-blue-700 text-white"
                       : isToday
                         ? "border border-blue-300 text-blue-700"
                         : "hover:bg-muted"

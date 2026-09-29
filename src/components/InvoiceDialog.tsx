@@ -1,6 +1,5 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { BrandLogo } from "@/components/BrandLogo";
 import {
   Dialog,
   DialogContent,
@@ -92,7 +91,9 @@ export function InvoiceDialog({
             {/* سربرگ */}
             <div className="flex items-start justify-between gap-4 border-b pb-4">
               <div className="flex items-center gap-3">
-                <BrandLogo boxClassName="size-14" />
+                <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-800 text-2xl font-black text-white shadow-sm">
+                  س
+                </span>
                 <div>
                   <div className="text-lg font-black">{factoryName}</div>
                   <div className="mt-0.5 text-xs text-muted-foreground">

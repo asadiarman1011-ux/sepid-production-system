@@ -206,6 +206,11 @@ const schema = defineSchema(
       attrs: v.optional(
         v.array(v.object({ key: v.string(), value: v.string() })),
       ), // زیرشاخه‌های آزاد (جنس، رنگ، گرماژ، اندازه...)
+      attrQty: v.optional(
+        v.array(
+          v.object({ key: v.string(), value: v.string(), qty: v.number() }),
+        ),
+      ), // موجودی هر زیرشاخه مواد اولیه
       unit: v.optional(v.string()), // واحد شمارش
       qty: v.number(), // موجودی کل (پوشاک: جمع سایزها)
       minQty: v.optional(v.number()), // حداقل هشدار

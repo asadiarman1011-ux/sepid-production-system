@@ -253,15 +253,17 @@ export const remove = mutation({
   },
 });
 
-/** افزودن/کم کردن موجودی (ورود/خروج کالا) — با پشتیبانی سایز */
+/** افزودن/کم کردن موجودی (ورود/خروج کالا) — با پشتیبانی سایز و زیرشاخه مواد اولیه */
 export const adjustStock = mutation({
   args: {
     id: v.id("warehouseItems"),
     delta: v.number(),
     note: v.optional(v.string()),
     size: v.optional(v.string()), // سایز خاص برای پوشاک
+    attrKey: v.optional(v.string()), // زیرشاخه مواد اولیه (مثلا «نوع»)
+    attrValue: v.optional(v.string()), // مقدار زیرشاخه (مثلا «سوزن گرد کد ۲»)
   },
-  handler: async (ctx, { id, delta, note, size }) => {
+  handler: async (ctx, { id, delta, note, size, attrKey, attrValue }) => {
     await requireEdit(ctx, "warehouse");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
@@ -270,6 +272,13 @@ export const adjustStock = mutation({
 
     const now = Date.now();
     const changes: { field: string; old?: string; new?: string }[] = [];
+
+    const attrLabel =
+      attrKey && attrValue
+        ? item.attrs?.find((a) => a.key === attrKey && a.value === attrValue)
+          ? `${attrKey}: ${attrValue}`
+          : attrValue
+        : undefined;
 
     if (size && item.kind === "apparel") {
       // تغییر موجودی یک سایز خاص + بازمحاسبه جمع کل
@@ -295,6 +304,30 @@ export const adjustStock = mutation({
         new: String(totalQty),
       });
       await ctx.db.patch(id, { sizes, qty: totalQty, updatedAtTs: now });
+    } else if (attrLabel && item.kind === "material") {
+      // تغییر موجودی یک زیرشاخه خاص مواد اولیه + بازمحاسبه جمع کل
+      const attrQty = [...(item.attrQty ?? [])];
+      const idx = attrQty.findIndex((a) => a.key === attrKey && a.value === attrValue);
+      if (idx === -1) {
+        if (delta > 0) {
+          attrQty.push({ key: attrKey!, value: attrValue!, qty: delta });
+          changes.push({ field: attrLabel, new: String(delta) });
+        } else {
+          throw new Error(`زیرشاخه «${attrValue}» در این قلم ثبت نشده است`);
+        }
+      } else {
+        const oldQty = attrQty[idx].qty;
+        const newQty = Math.max(0, oldQty + delta);
+        attrQty[idx] = { key: attrKey!, value: attrValue!, qty: newQty };
+        changes.push({ field: attrLabel, old: String(oldQty), new: String(newQty) });
+      }
+      const totalQty = attrQty.reduce((s, x) => s + x.qty, 0);
+      changes.push({
+        field: "موجودی کل",
+        old: String(item.qty),
+        new: String(totalQty),
+      });
+      await ctx.db.patch(id, { attrQty, qty: totalQty, updatedAtTs: now });
     } else {
       const newQty = Math.max(0, item.qty + delta);
       changes.push({
@@ -315,7 +348,7 @@ export const adjustStock = mutation({
     });
     await ctx.runMutation(internal.notifications.pushInternal, {
       type: "warehouse",
-      title: `${delta > 0 ? "ورود" : "خروج"} کالا — ${item.name}${size ? ` (سایز ${size})` : ""}`,
+      title: `${delta > 0 ? "ورود" : "خروج"} کالا — ${item.name}${size ? ` (سایز ${size})` : ""}${attrLabel ? ` (${attrLabel})` : ""}`,
       body: changes.map((c) => `${c.field}: ${c.old ?? "0"} → ${c.new ?? ""}`).join(" · "),
       link: "/dashboard/warehouse",
       byName: user?.name ?? user?.email ?? undefined,

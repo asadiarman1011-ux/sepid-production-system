@@ -171,7 +171,7 @@ export default function Delivery() {
             onClick={() => setParams({ tab: t.id })}
             className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
               tab === t.id
-                ? "bg-blue-600 text-white shadow-sm"
+                ? "bg-blue-700 text-white shadow-sm shadow-blue-900/30"
                 : "bg-background text-muted-foreground hover:bg-muted"
             }`}
           >

@@ -63,7 +63,7 @@ export function NotificationBell() {
         >
           <Bell className="size-5" />
           {count > 0 && (
-            <span className="absolute -top-0.5 -left-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-black text-white shadow-md ring-2 ring-background">
+            <span className="absolute -top-0.5 -left-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-700 px-1 text-[10px] font-black text-white shadow-md ring-2 ring-background">
               {count > 99 ? "+۹۹" : toFaDigits(count)}
             </span>
           )}

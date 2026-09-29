@@ -172,7 +172,7 @@ export default function Dashboard() {
             <Link key={s.id} to={s.path}>
               <Card className="group h-full rounded-2xl border-border/70 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
                 <CardContent className="flex items-start gap-3 p-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground transition-colors group-hover:bg-blue-600 group-hover:text-white">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground transition-colors group-hover:bg-blue-700 group-hover:text-white">
                     <Icon className="size-5" />
                   </div>
                   <div>

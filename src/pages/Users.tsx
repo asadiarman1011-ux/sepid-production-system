@@ -402,7 +402,7 @@ export default function Users() {
                             }
                             className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-all ${
                               cur === l
-                                ? "bg-blue-600 text-white shadow-sm"
+                                ? "bg-blue-700 text-white shadow-sm shadow-blue-900/30"
                                 : "bg-muted text-muted-foreground hover:bg-accent"
                             }`}
                           >

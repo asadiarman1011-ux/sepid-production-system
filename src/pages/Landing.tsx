@@ -11,7 +11,6 @@ import {
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BrandLogo } from "@/components/BrandLogo";
 
 const FEATURES = [
   {
@@ -66,7 +65,9 @@ export default function Landing() {
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <BrandLogo boxClassName="size-11" />
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-800 text-xl font-black text-white shadow-md">
+              س
+            </span>
             <div>
               <div className="text-sm font-black">تولیدی پوشاک سپید</div>
               <div className="text-[11px] text-muted-foreground">سامانه جامع مدیریت تولید</div>
@@ -138,7 +139,7 @@ export default function Landing() {
                     transition={{ delay: 0.15 * i + 0.2 }}
                     className="rounded-xl border bg-card p-4 text-right"
                   >
-                    <div className="mb-2 flex size-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-black text-white">
+                    <div className="mb-2 flex size-8 items-center justify-center rounded-lg bg-blue-700 text-sm font-black text-white">
                       {s.num}
                     </div>
                     <div className="text-sm font-bold">{s.title}</div>
@@ -186,7 +187,7 @@ export default function Landing() {
       <section className="py-16">
         <div className="mx-auto max-w-4xl px-4">
           <div className="rounded-2xl border bg-card p-8 text-center shadow-sm">
-            <div className="mb-3 flex size-12 mx-auto items-center justify-center rounded-xl bg-blue-600 text-white">
+            <div className="mb-3 flex size-12 mx-auto items-center justify-center rounded-xl bg-blue-700 text-white">
               <Shield className="size-6" />
             </div>
             <h2 className="text-xl font-black">اولین کاربر، رییس کارخانه است</h2>

@@ -144,6 +144,14 @@ export default function NewOrder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appSettings, preselectedId]);
 
+  // تغییر سفارشِ در حال ویرایش (مثلا کلیک روی کارت تاریخچه) → اجازه بارگذاری مجدد
+  // و بستن پنل تاریخچه تا فرم ویرایش دیده شود
+  useEffect(() => {
+    loadedEdit.current = false;
+    setShowHistory(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId]);
+
   // بارگذاری سفارش موجود برای ویرایش
   useEffect(() => {
     if (existingOrder && editId && !loadedEdit.current) {
@@ -672,7 +680,7 @@ export default function NewOrder() {
                         </span>
                       </Label>
                       {it.useSizes && (
-                        <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-black text-white">
+                        <span className="rounded-full bg-blue-700 px-3 py-1 text-xs font-black text-white">
                           جمع تعداد: {toFaDigits(itemQty(it))}
                         </span>
                       )}
@@ -905,7 +913,7 @@ function OrderHistory({ onBack }: { onBack: () => void }) {
               onClick={() => setStatusFilter(t.id)}
               className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
                 statusFilter === t.id
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-blue-700 text-white shadow-sm shadow-blue-900/30"
                   : "bg-background text-muted-foreground hover:bg-muted"
               }`}
             >
@@ -944,7 +952,10 @@ function OrderHistory({ onBack }: { onBack: () => void }) {
               <Card
                 key={order._id}
                 className="group cursor-pointer rounded-2xl border-border/70 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-                onClick={() => navigate(`/dashboard/new-order?edit=${order._id}`)}
+                onClick={() => {
+                  onBack();
+                  navigate(`/dashboard/new-order?edit=${order._id}`);
+                }}
               >
                 <CardContent className="flex h-full flex-col gap-2.5 p-4">
                   <div className="flex items-start justify-between gap-2">
