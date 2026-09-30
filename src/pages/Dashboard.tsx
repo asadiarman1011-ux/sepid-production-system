@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
+import signatureLogo from "@/assets/signature-logo.svg";
 
 const ICONS: Record<string, typeof ClipboardList> = {
   clipboard: ClipboardList,
@@ -109,11 +110,18 @@ export default function Dashboard() {
       {/* Hero CTA */}
       <Card className="mb-6 overflow-hidden rounded-2xl border-0 bg-gradient-to-l from-blue-950 via-blue-800 to-blue-600 text-white shadow-lg shadow-blue-900/20">
         <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-black">
-              {greeting}
-              {access?.name ? `، ${access.name}` : ""} 👋
-            </h2>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-black">
+                {greeting}
+                {access?.name ? `، ${access.name}` : ""} 👋
+              </h2>
+              <img
+                src={signatureLogo}
+                alt="امضای تولیدی پوشاک سپید"
+                className="h-14 w-auto shrink-0 opacity-95 sm:h-16"
+              />
+            </div>
             <p className="mt-1 text-sm text-blue-100">
               مهم‌ترین کار امروز: ثبت سفارش جدید — با تفکیک سایز و محاسبه خودکار قیمت
             </p>

@@ -90,6 +90,16 @@ function deepEqual(a: unknown, b: unknown) {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
+/** موجودی مؤثر: اگر زیرشاخه انتخاب شده، شمارش ثبت‌شده آن + سهم ثبت‌نشده از موجودی کل */
+function effectiveQty(item: WhDoc, attr: Attr | null): number {
+  if (!attr) return item.qty;
+  const attrQty = (item.attrQty as AttrQty[] | undefined) ?? [];
+  const tracked = attrQty.reduce((s, q) => s + q.qty, 0);
+  const untracked = Math.max(0, item.qty - tracked);
+  const recorded = attrQty.find((q) => q.key === attr.key && q.value === attr.value)?.qty ?? 0;
+  return recorded === 0 ? untracked : recorded;
+}
+
 export default function Warehouse() {
   const { money: whMoney } = useCurrency();
   const [tab, setTab] = useState<"apparel" | "material">("apparel");
@@ -719,9 +729,9 @@ export default function Warehouse() {
             {stockFor?.kind === "material" && (stockFor.attrs?.length ?? 0) > 0 && (
               <div>
                 <Label className="mb-1.5 text-sm font-semibold">
-                  کدام زیرشاخه؟
+                  کدام زیرشاخه؟ <span className="text-destructive">(الزامی)</span>
                   <span className="text-xs font-normal text-muted-foreground">
-                    {" "}(اگر انتخاب نکنی، جمع کل تغییر می‌کند)
+                    {" "}(موجودی همان زیرشاخه کم می‌شود)
                   </span>
                 </Label>
                 <div className="flex flex-wrap gap-1.5">
@@ -766,15 +776,15 @@ export default function Warehouse() {
                 className="h-11 border-2 font-bold"
                 dir="ltr"
               />
+              {stockFor?.kind === "material" && (stockFor.attrs?.length ?? 0) > 0 && !stockAttr && (
+                <p className="mt-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-800">
+                  ابتدا زیرشاخه (مثلا سوزن ۱) را از بالا انتخاب کنید تا موجودی همان زیرشاخه تغییر کند
+                </p>
+              )}
               {stockFor?.kind === "material" && (
                 <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                  موجودی فعلی: {formatNumber(
-                    stockAttr
-                      ? ((stockFor.attrQty as AttrQty[] | undefined)?.find(
-                          (q) => q.key === stockAttr.key && q.value === stockAttr.value,
-                        )?.qty ?? 0)
-                      : stockFor.qty,
-                  )} {stockFor.unit ?? ""}
+                  {stockAttr ? "موجودی همین زیرشاخه: " : "موجودی فعلی: "}
+                  {formatNumber(effectiveQty(stockFor, stockAttr))} {stockFor.unit ?? ""}
                   {stockFor.minQty != null && stockFor.qty - (stockDelta < 0 ? stockQty : 0) <= stockFor.minQty && (
                     <span className="mr-2 font-bold text-destructive">⚠ بعد از این خروج به حد هشدار می‌رسد</span>
                   )}
@@ -782,8 +792,13 @@ export default function Warehouse() {
               )}
             </div>
             <Button
+              disabled={stockFor?.kind === "material" && (stockFor.attrs?.length ?? 0) > 0 && !stockAttr}
               onClick={async () => {
                 if (!stockFor) return;
+                if (stockFor.kind === "material" && (stockFor.attrs?.length ?? 0) > 0 && !stockAttr) {
+                  toast.error("ابتدا زیرشاخه را انتخاب کنید تا موجودی همان زیرشاخه کم/زیاد شود");
+                  return;
+                }
                 try {
                   await adjustStock({
                     id: stockFor._id as never,

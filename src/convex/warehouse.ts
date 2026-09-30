@@ -327,43 +327,31 @@ export const adjustStock = mutation({
       // تغییر موجودی یک زیرشاخه خاص مواد اولیه + بازمحاسبه جمع کل
       const attrQty = [...(item.attrQty ?? [])];
       const idx = attrQty.findIndex((a) => a.key === attrKey && a.value === attrValue);
+      // موجودی ثبت‌نشده در زیرشاخه‌ها = موجودی کل منهای جمع شمارش زیرشاخه‌ها
+      const tracked = attrQty.reduce((s, x) => s + x.qty, 0);
+      const untracked = Math.max(0, item.qty - tracked);
       if (idx === -1) {
         if (delta > 0) {
           // زیرشاخه تازه: ثبت مستقیم ورود در شمارش همان زیرشاخه
           attrQty.push({ key: attrKey!, value: attrValue!, qty: delta });
           changes.push({ field: attrLabel, new: String(delta) });
         } else {
-          // زیرشاخه هنوز شمارش جدا ندارد: خروج از موجودی کل و ثبت لاگ — بدون ارور
-          const newQty = Math.max(0, item.qty + delta);
-          changes.push({
-            field: attrLabel,
-            new: `0 از ${formatNum(item.qty)}`,
-          });
-          changes.push({
-            field: "موجودی کل",
-            old: formatNum(item.qty),
-            new: formatNum(newQty),
-          });
-          await ctx.db.patch(id, { qty: newQty, updatedAtTs: now });
-          await ctx.db.insert("warehouseLogs", {
-            itemId: id,
-            itemName: item.name,
-            action: "stock",
-            changes,
-            byName: user?.name ?? user?.email ?? undefined,
-            atTs: now,
-          });
-          await ctx.runMutation(internal.notifications.pushInternal, {
-            type: "warehouse",
-            title: `خروج کالا — ${item.name} (${attrLabel})`,
-            body: `${changes.map((c) => `${c.field}: ${c.old ?? "0"} → ${c.new ?? ""}`).join(" · ")}${note ? ` — ${note}` : ""}`,
-            link: "/dashboard/warehouse",
-            byName: user?.name ?? user?.email ?? undefined,
-          });
-          return;
+          // زیرشاخه بدون شمارش: ابتدا شمارش آن از باقیمانده موجودی کل مقداردهی می‌شود، سپس خروج اعمال می‌شود
+          const newQty = Math.max(0, untracked + delta);
+          attrQty.push({ key: attrKey!, value: attrValue!, qty: newQty });
+          changes.push({ field: attrLabel, old: formatNum(untracked), new: formatNum(newQty) });
         }
       } else {
-        const oldQty = attrQty[idx].qty;
+        let oldQty = attrQty[idx].qty;
+        // قلم قدیمی که شمارش زیرشاخه‌اش هنوز از موجودی کل جدا نشده (صفر است):
+        // اول شمارش از باقیمانده موجودی کل مقداردهی می‌شود تا خروج واقعا از همان زیرشاخه کم کند
+        if (oldQty === 0 && untracked > 0) {
+          oldQty = untracked;
+          changes.push({
+            field: `${attrLabel} — تخصیص از موجودی کل`,
+            new: formatNum(untracked),
+          });
+        }
         const newQty = Math.max(0, oldQty + delta);
         attrQty[idx] = { key: attrKey!, value: attrValue!, qty: newQty };
         changes.push({ field: attrLabel, old: formatNum(oldQty), new: formatNum(newQty) });
@@ -396,7 +384,7 @@ export const adjustStock = mutation({
     await ctx.runMutation(internal.notifications.pushInternal, {
       type: "warehouse",
       title: `${delta > 0 ? "ورود" : "خروج"} کالا — ${item.name}${size ? ` (سایز ${size})` : ""}${attrLabel ? ` (${attrLabel})` : ""}`,
-      body: changes.map((c) => `${c.field}: ${c.old ?? "0"} → ${c.new ?? ""}`).join(" · "),
+      body: `${changes.map((c) => `${c.field}: ${c.old ?? "0"} → ${c.new ?? ""}`).join(" · ")}${note ? ` — ${note}` : ""}`,
       link: "/dashboard/warehouse",
       byName: user?.name ?? user?.email ?? undefined,
     });
