@@ -28,9 +28,9 @@ function makeSearchText(w: {
     .join(" ");
 }
 
-/** قالب عدد برای لاگ‌ها */
+/** قالب عدد برای لاگ‌ها (بدون صفر اضافه؛ اعشار تا ۲ رقم) */
 function formatNum(n: number) {
-  return String(Math.round(n * 100));
+  return String(Math.round(n * 100) / 100);
 }
 
 /** تبدیل ارقام فارسی/عربی به لاتین برای پارس عدد */
