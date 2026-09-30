@@ -39,6 +39,8 @@ type ItemState = {
   material: string;
   materialPrice: number | undefined;
   color: string;
+  printType: string;
+  printTypePrice: number | undefined;
   printFront: string;
   printFrontPrice: number | undefined;
   printBack: string;
@@ -62,6 +64,8 @@ const emptyItem = (): ItemState => ({
   material: "",
   materialPrice: undefined,
   color: "",
+  printType: "",
+  printTypePrice: undefined,
   printFront: "",
   printFrontPrice: undefined,
   printBack: "",
@@ -83,6 +87,7 @@ function lineTotal(it: ItemState) {
   return (
     (it.productTypePrice ?? 0) +
     (it.materialPrice ?? 0) +
+    (it.printTypePrice ?? 0) +
     (it.printFrontPrice ?? 0) +
     (it.printBackPrice ?? 0) +
     (it.buttonPrice ?? 0) +
@@ -170,6 +175,8 @@ export default function NewOrder() {
           material?: string;
           materialPrice?: number;
           color?: string;
+          printType?: string;
+          printTypePrice?: number;
           printFront?: string;
           printFrontPrice?: number;
           printBack?: string;
@@ -209,6 +216,8 @@ export default function NewOrder() {
           material: it.material ?? "",
           materialPrice: it.materialPrice,
           color: it.color ?? "",
+          printType: it.printType ?? "",
+          printTypePrice: it.printTypePrice,
           printFront: it.printFront ?? "",
           printFrontPrice: it.printFrontPrice,
           printBack: it.printBack ?? "",
@@ -270,6 +279,7 @@ export default function NewOrder() {
     if (it.productType) upsertPreset({ category: "productType", value: it.productType, price: it.productTypePrice });
     if (it.material) upsertPreset({ category: "material", value: it.material, price: it.materialPrice });
     if (it.color) upsertPreset({ category: "color", value: it.color });
+    if (it.printType) upsertPreset({ category: "printType", value: it.printType, price: it.printTypePrice });
     if (it.printFront) upsertPreset({ category: "print", value: it.printFront, price: it.printFrontPrice });
     if (it.printBack) upsertPreset({ category: "print", value: it.printBack, price: it.printBackPrice });
     if (it.buttonType) upsertPreset({ category: "buttonType", value: it.buttonType, price: it.buttonPrice });
@@ -319,6 +329,8 @@ export default function NewOrder() {
             material: it.material.trim() || undefined,
             materialPrice: it.materialPrice,
             color: it.color.trim() || undefined,
+            printType: it.printType.trim() || undefined,
+            printTypePrice: it.printTypePrice,
             printFront: it.printFront.trim() || undefined,
             printFrontPrice: it.printFrontPrice,
             printBack: it.printBack.trim() || undefined,
@@ -593,6 +605,19 @@ export default function NewOrder() {
                     label="رنگ"
                     value={it.color}
                     onChange={(v) => updateItem(idx, { color: v })}
+                    optional
+                  />
+                  <PresetInput
+                    category="printType"
+                    label="نوع چاپ (سیلک، گلدوزی، دیجیتال… )"
+                    value={it.printType}
+                    onChange={(v) => updateItem(idx, { printType: v })}
+                    optional
+                  />
+                  <PriceInput
+                    label="قیمت نوع چاپ"
+                    value={it.printTypePrice}
+                    onChange={(n) => updateItem(idx, { printTypePrice: n })}
                     optional
                   />
                   <PresetInput

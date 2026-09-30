@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ProfileDialog } from "@/components/ProfileDialog";
+import { BrandMark } from "@/components/BrandMark";
 import { api } from "@/convex/_generated/api";
 import type { Section } from "@/convex/access";
 import { SECTIONS, canAccess, levelsOfRole } from "@/lib/sections";
@@ -97,9 +98,7 @@ export function AppShell({
         className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(240px_120px_at_70%_0%,rgba(96,165,250,0.25),transparent)]"
       />
       <Link to="/dashboard" className="relative mb-6 flex items-center gap-3 px-2">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-800 text-xl font-black text-white shadow-md ring-1 ring-white/20">
-          س
-        </span>
+        <BrandMark boxClassName="size-11" />
         <div>
           <div className="text-sm font-black text-white">سامانه سپید</div>
           <div className="text-[11px] text-blue-200/70">

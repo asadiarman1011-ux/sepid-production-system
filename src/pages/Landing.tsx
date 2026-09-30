@@ -11,7 +11,7 @@ import {
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
+import { BrandMark } from "@/components/BrandMark";
 const FEATURES = [
   {
     icon: ClipboardList,
@@ -65,9 +65,7 @@ export default function Landing() {
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-800 text-xl font-black text-white shadow-md">
-              س
-            </span>
+            <BrandMark boxClassName="size-11" />
             <div>
               <div className="text-sm font-black">تولیدی پوشاک سپید</div>
               <div className="text-[11px] text-muted-foreground">سامانه جامع مدیریت تولید</div>

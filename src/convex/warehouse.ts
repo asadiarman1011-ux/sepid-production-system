@@ -25,6 +25,11 @@ function makeSearchText(w: {
     .join(" ");
 }
 
+/** قالب عدد برای لاگ‌ها */
+function formatNum(n: number) {
+  return String(Math.round(n * 100) / 100);
+}
+
 /** همه اقلام انبار؛ جستجو + فیلتر نوع (پوشاک/مواد اولیه) */
 export const list = query({
   args: {
@@ -117,6 +122,11 @@ export const create = mutation({
     const id = await ctx.db.insert("warehouseItems", {
       ...args,
       qty: totalQty,
+      // شمارش اولیه هر زیرشاخه = کل موجودی (زیرشاخه‌های تازه‌ساخت)
+      attrQty:
+        args.kind === "material"
+          ? (args.attrs ?? []).map((a) => ({ ...a, qty: 0 }))
+          : undefined,
       searchText: makeSearchText(args),
       createdAtTs: now,
       updatedAtTs: now,
@@ -208,9 +218,18 @@ export const update = mutation({
         });
       }
     }
+    // زیرشاخه‌های حذف/اضافه‌شده در ویرایش؛ شمارش زیرشاخه‌های حفظ‌شده می‌ماند
+    const keptAttrQty = (item.attrQty ?? []).filter((q) =>
+      (args.attrs ?? []).some((a) => a.key === q.key && a.value === q.value),
+    );
+    const addedAttrQty = (args.attrs ?? [])
+      .filter((a) => !(item.attrQty ?? []).some((q) => q.key === a.key && q.value === a.value))
+      .map((a) => ({ ...a, qty: 0 }));
+    const attrQty = [...keptAttrQty, ...addedAttrQty];
     await ctx.db.patch(id, {
       ...args,
       qty: totalQty,
+      attrQty,
       searchText: makeSearchText(args),
       updatedAtTs: now,
     });
@@ -310,22 +329,50 @@ export const adjustStock = mutation({
       const idx = attrQty.findIndex((a) => a.key === attrKey && a.value === attrValue);
       if (idx === -1) {
         if (delta > 0) {
+          // زیرشاخه تازه: ثبت مستقیم ورود در شمارش همان زیرشاخه
           attrQty.push({ key: attrKey!, value: attrValue!, qty: delta });
           changes.push({ field: attrLabel, new: String(delta) });
         } else {
-          throw new Error(`زیرشاخه «${attrValue}» در این قلم ثبت نشده است`);
+          // زیرشاخه هنوز شمارش جدا ندارد: خروج از موجودی کل و ثبت لاگ — بدون ارور
+          const newQty = Math.max(0, item.qty + delta);
+          changes.push({
+            field: attrLabel,
+            new: `0 از ${formatNum(item.qty)}`,
+          });
+          changes.push({
+            field: "موجودی کل",
+            old: formatNum(item.qty),
+            new: formatNum(newQty),
+          });
+          await ctx.db.patch(id, { qty: newQty, updatedAtTs: now });
+          await ctx.db.insert("warehouseLogs", {
+            itemId: id,
+            itemName: item.name,
+            action: "stock",
+            changes,
+            byName: user?.name ?? user?.email ?? undefined,
+            atTs: now,
+          });
+          await ctx.runMutation(internal.notifications.pushInternal, {
+            type: "warehouse",
+            title: `خروج کالا — ${item.name} (${attrLabel})`,
+            body: `${changes.map((c) => `${c.field}: ${c.old ?? "0"} → ${c.new ?? ""}`).join(" · ")}${note ? ` — ${note}` : ""}`,
+            link: "/dashboard/warehouse",
+            byName: user?.name ?? user?.email ?? undefined,
+          });
+          return;
         }
       } else {
         const oldQty = attrQty[idx].qty;
         const newQty = Math.max(0, oldQty + delta);
         attrQty[idx] = { key: attrKey!, value: attrValue!, qty: newQty };
-        changes.push({ field: attrLabel, old: String(oldQty), new: String(newQty) });
+        changes.push({ field: attrLabel, old: formatNum(oldQty), new: formatNum(newQty) });
       }
       const totalQty = attrQty.reduce((s, x) => s + x.qty, 0);
       changes.push({
         field: "موجودی کل",
-        old: String(item.qty),
-        new: String(totalQty),
+        old: formatNum(item.qty),
+        new: formatNum(totalQty),
       });
       await ctx.db.patch(id, { attrQty, qty: totalQty, updatedAtTs: now });
     } else {

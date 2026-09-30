@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/BrandMark";
 import { Separator } from "@/components/ui/separator";
 import { useCurrency } from "@/lib/currency";
 import { toFaDigits } from "@/lib/jalali";
@@ -16,6 +17,7 @@ type Item = {
   productType: string;
   material?: string;
   color?: string;
+  printType?: string;
   size?: string;
   sizes?: { size: string; qty: number }[];
   qty: number;
@@ -91,9 +93,7 @@ export function InvoiceDialog({
             {/* سربرگ */}
             <div className="flex items-start justify-between gap-4 border-b pb-4">
               <div className="flex items-center gap-3">
-                <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-800 text-2xl font-black text-white shadow-sm">
-                  س
-                </span>
+                <BrandMark boxClassName="size-14" />
                 <div>
                   <div className="text-lg font-black">{factoryName}</div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
@@ -148,6 +148,7 @@ export function InvoiceDialog({
                   const spec = [
                     it.material && `جنس: ${it.material}`,
                     it.color && `رنگ: ${it.color}`,
+                    it.printType && `نوع چاپ: ${it.printType}`,
                     it.sizes && it.sizes.length > 0
                       ? `سایزها: ${it.sizes.map((s) => `${s.size}(${toFaDigits(s.qty)})`).join("، ")}`
                       : it.size && `سایز: ${it.size}`,

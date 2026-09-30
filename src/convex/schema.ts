@@ -30,6 +30,8 @@ export const orderItemValidator = v.object({
   material: v.optional(v.string()), // جنس
   materialPrice: v.optional(v.number()),
   color: v.optional(v.string()), // رنگ
+  printType: v.optional(v.string()), // نوع چاپ (سیلک، گلدوزی، دیجیتال…)
+  printTypePrice: v.optional(v.number()),
   printFront: v.optional(v.string()), // متن/نقش چاپ جلو
   printFrontPrice: v.optional(v.number()),
   printBack: v.optional(v.string()), // متن/نقش چاپ پشت

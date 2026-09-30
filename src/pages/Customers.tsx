@@ -618,6 +618,7 @@ function CustomerDetailDialog({ id, onClose }: { id: string; onClose: () => void
                               <span className="font-bold">{item.productType}</span>
                               {item.material && <span>جنس: {item.material}</span>}
                               {item.color && <span>رنگ: {item.color}</span>}
+                              {item.printType && <span>نوع چاپ: {item.printType}</span>}
                               {item.sizes && item.sizes.length > 0 ? (
                                 <span className="flex flex-wrap items-center gap-1">
                                   سایزها:

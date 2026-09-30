@@ -21,6 +21,8 @@ const orderItemArgs = v.object({
   material: v.optional(v.string()),
   materialPrice: v.optional(v.number()),
   color: v.optional(v.string()),
+  printType: v.optional(v.string()),
+  printTypePrice: v.optional(v.number()),
   printFront: v.optional(v.string()),
   printFrontPrice: v.optional(v.number()),
   printBack: v.optional(v.string()),
@@ -111,6 +113,8 @@ export const create = mutation({
         material: v.optional(v.string()),
         materialPrice: v.optional(v.number()),
         color: v.optional(v.string()),
+        printType: v.optional(v.string()),
+        printTypePrice: v.optional(v.number()),
         printFront: v.optional(v.string()),
         printFrontPrice: v.optional(v.number()),
         printBack: v.optional(v.string()),
@@ -212,6 +216,7 @@ export const create = mutation({
         ...args.items.map((i) => i.productType),
         ...args.items.map((i) => i.material ?? ""),
         ...args.items.map((i) => i.color ?? ""),
+        ...args.items.map((i) => i.printType ?? ""),
         ...args.items.map((i) => i.printFront ?? ""),
         ...args.items.map((i) => i.printBack ?? ""),
       ]
@@ -280,6 +285,7 @@ export const update = mutation({
         ...args.items.map((i) => i.productType),
         ...args.items.map((i) => i.material ?? ""),
         ...args.items.map((i) => i.color ?? ""),
+        ...args.items.map((i) => i.printType ?? ""),
         ...args.items.map((i) => i.printFront ?? ""),
         ...args.items.map((i) => i.printBack ?? ""),
       ]

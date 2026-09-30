@@ -14,6 +14,7 @@ export const PRESET_CATEGORIES = [
   "material",
   "color",
   "print",
+  "printType",
   "buttonType",
   "zipperType",
   "pocketType",
