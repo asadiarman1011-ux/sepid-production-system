@@ -73,6 +73,7 @@ type LogDoc = {
 
 type Attr = { key: string; value: string };
 type AttrQty = { key: string; value: string; qty: number };
+type AttrRow = { key: string; value: string; valueNum?: number };
 
 const MATERIAL_CATEGORIES = [
   "پارچه",
@@ -90,14 +91,37 @@ function deepEqual(a: unknown, b: unknown) {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
-/** موجودی مؤثر: اگر زیرشاخه انتخاب شده، شمارش ثبت‌شده آن + سهم ثبت‌نشده از موجودی کل */
+/** تبدیل ارقام فارسی/عربی به لاتین */
+function faToEn(s: string) {
+  return s
+    .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+}
+
+/** تعداد عددی نوشته‌شده در مقدار زیرشاخه (مدل قدیمی: مقدار = تعداد) */
+function seededCount(value: string) {
+  if (value.trim() === "") return 0;
+  const n = Number(faToEn(value).trim());
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** تعداد مؤثر یک زیرشاخه: شمارش ثبت‌شده > عدد داخل مقدار (قدیمی) > باقیمانده کل */
+function attrEffectiveQty(item: WhDoc, attr: Attr): number {
+  const attrQty = (item.attrQty as AttrQty[] | undefined) ?? [];
+  const recorded = attrQty.find(
+    (q) => q.key === attr.key && q.value === attr.value,
+  )?.qty;
+  if (recorded != null && recorded > 0) return recorded;
+  const seeded = seededCount(attr.value);
+  if (seeded > 0) return seeded;
+  const tracked = attrQty.reduce((s, q) => s + q.qty, 0);
+  return Math.max(0, item.qty - tracked);
+}
+
+/** موجودی مؤثر در دیالوگ ورود/خروج */
 function effectiveQty(item: WhDoc, attr: Attr | null): number {
   if (!attr) return item.qty;
-  const attrQty = (item.attrQty as AttrQty[] | undefined) ?? [];
-  const tracked = attrQty.reduce((s, q) => s + q.qty, 0);
-  const untracked = Math.max(0, item.qty - tracked);
-  const recorded = attrQty.find((q) => q.key === attr.key && q.value === attr.value)?.qty ?? 0;
-  return recorded === 0 ? untracked : recorded;
+  return attrEffectiveQty(item, attr);
 }
 
 export default function Warehouse() {
@@ -128,7 +152,7 @@ export default function Warehouse() {
   const [pocketType, setPocketType] = useState("");
   const [sizes, setSizes] = useState<Attr2[]>([]);
   const [category, setCategory] = useState("");
-  const [attrs, setAttrs] = useState<Attr[]>([]);
+  const [attrRows, setAttrRows] = useState<AttrRow[]>([]);
   const [unit, setUnit] = useState("");
   const [qty, setQty] = useState(0);
   const [minQty, setMinQty] = useState<number | undefined>();
@@ -169,7 +193,7 @@ export default function Warehouse() {
     setPocketType("");
     setSizes([]);
     setCategory("");
-    setAttrs([]);
+    setAttrRows([]);
     setUnit("");
     setQty(0);
     setPrice(undefined);
@@ -189,7 +213,18 @@ export default function Warehouse() {
     setPocketType(item.pocketType ?? "");
     setSizes((item.sizes ?? []).map((s) => ({ key: s.size, valueNum: s.qty })));
     setCategory(item.category ?? "");
-    setAttrs(item.attrs ?? []);
+    setAttrRows(
+      (item.attrs ?? []).map((a) => {
+        const recorded = (item.attrQty ?? []).find(
+          (q) => q.key === a.key && q.value === a.value,
+        )?.qty;
+        return {
+          key: a.key,
+          value: a.value,
+          valueNum: recorded || seededCount(a.value) || undefined,
+        };
+      }),
+    );
     setUnit(item.unit ?? "");
     setQty(item.qty);
     setMinQty(item.minQty ?? appSettings?.lowStockThreshold ?? 5);
@@ -231,7 +266,15 @@ export default function Warehouse() {
         const payload = {
           name: name.trim(),
           category: category.trim() || undefined,
-          attrs: attrs.filter((a) => a.key.trim()),
+          attrs: attrRows
+            .filter((a) => a.key.trim() || a.value.trim())
+            .map((a) => ({ key: a.key, value: a.value })),
+          attrCounts: attrRows
+            .filter(
+              (a) =>
+                (a.key.trim() || a.value.trim()) && typeof a.valueNum === "number",
+            )
+            .map((a) => ({ key: a.key, value: a.value, qty: a.valueNum as number })),
           unit: unit.trim() || "عدد",
           qty,
           price,
@@ -378,16 +421,14 @@ export default function Warehouse() {
                 {w.kind === "material" && (w.attrs?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {w.attrs!.map((a, i) => {
-                      const perQty = w.attrQty?.find(
-                        (q) => q.key === a.key && q.value === a.value,
-                      )?.qty;
+                      const cnt = attrEffectiveQty(w, a);
                       return (
                         <span
                           key={i}
                           className="rounded-full border bg-muted px-2.5 py-0.5 text-[11px] font-bold"
                         >
                           {a.key === a.value ? a.value : `${a.key}: ${a.value}`}
-                          {perQty != null ? ` — ${formatNumber(perQty)}` : ""}
+                          <span className="mr-1 text-blue-700">— {formatNumber(cnt)}</span>
                         </span>
                       );
                     })}
@@ -587,31 +628,37 @@ export default function Warehouse() {
                     <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="متر / کیلو / عدد" className="h-11 border-2" />
                   </div>
                 </div>
-                {/* attrs editor */}
+                {/* attrs editor: نام + تعداد هر زیرشاخه */}
                 <div>
                   <Label className="mb-1.5 text-sm font-semibold">
-                    زیرشاخه‌ها (جنس، رنگ، گرماژ، اندازه و… — آزاد)
+                    زیرشاخه‌ها و تعداد هرکدام (مثلا: سوزن ۱ = ۲۰)
                   </Label>
                   <div className="space-y-2">
-                    {attrs.map((a, i) => (
+                    {attrRows.map((a, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <Input
-                          value={a.key}
-                          onChange={(e) => setAttrs((prev) => prev.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))}
-                          placeholder="عنوان زیرشاخه"
+                          value={a.value}
+                          onChange={(e) => setAttrRows((prev) => prev.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
+                          placeholder="نام زیرشاخه (مثلا سوزن ۱)"
                           className="h-10 flex-1 border-2"
                         />
                         <Input
-                          value={a.value}
-                          onChange={(e) => setAttrs((prev) => prev.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
-                          placeholder="مقدار"
-                          className="h-10 flex-1 border-2"
+                          type="number"
+                          value={a.valueNum ?? ""}
+                          onChange={(e) =>
+                            setAttrRows((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, valueNum: e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)) } : x)),
+                            )
+                          }
+                          placeholder="تعداد"
+                          className="h-10 w-28 border-2"
+                          dir="ltr"
                         />
                         <Button
                           variant="ghost"
                           size="icon"
                           className="size-9 shrink-0 text-destructive"
-                          onClick={() => setAttrs((prev) => prev.filter((_, j) => j !== i))}
+                          onClick={() => setAttrRows((prev) => prev.filter((_, j) => j !== i))}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -622,7 +669,7 @@ export default function Warehouse() {
                       variant="outline"
                       size="sm"
                       className="gap-1"
-                      onClick={() => setAttrs((prev) => [...prev, { key: "", value: "" }])}
+                      onClick={() => setAttrRows((prev) => [...prev, { key: "نوع", value: "", valueNum: undefined }])}
                     >
                       <Plus className="size-3.5" />
                       افزودن زیرشاخه
@@ -731,14 +778,12 @@ export default function Warehouse() {
                 <Label className="mb-1.5 text-sm font-semibold">
                   کدام زیرشاخه؟ <span className="text-destructive">(الزامی)</span>
                   <span className="text-xs font-normal text-muted-foreground">
-                    {" "}(موجودی همان زیرشاخه کم می‌شود)
+                    {" "}(تعداد همان زیرشاخه کم/زیاد می‌شود)
                   </span>
                 </Label>
                 <div className="flex flex-wrap gap-1.5">
                   {stockFor.attrs!.map((a, i) => {
-                    const perQty = (stockFor.attrQty as AttrQty[] | undefined)?.find(
-                      (q) => q.key === a.key && q.value === a.value,
-                    )?.qty;
+                    const cnt = attrEffectiveQty(stockFor, a);
                     return (
                       <button
                         key={i}
@@ -755,7 +800,7 @@ export default function Warehouse() {
                         }`}
                       >
                         {a.key === a.value ? a.value : `${a.key}: ${a.value}`}
-                        {perQty != null ? `: ${formatNumber(perQty)}` : ""}
+                        {`: ${formatNumber(cnt)}`}
                       </button>
                     );
                   })}

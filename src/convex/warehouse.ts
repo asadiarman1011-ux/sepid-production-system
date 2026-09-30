@@ -11,6 +11,9 @@ const attrsValidator = v.array(
 const sizesValidator = v.array(
   v.object({ size: v.string(), qty: v.number() }),
 );
+const attrQtyValidator = v.array(
+  v.object({ key: v.string(), value: v.string(), qty: v.number() }),
+);
 
 function makeSearchText(w: {
   name: string;
@@ -27,7 +30,40 @@ function makeSearchText(w: {
 
 /** قالب عدد برای لاگ‌ها */
 function formatNum(n: number) {
-  return String(Math.round(n * 100) / 100);
+  return String(Math.round(n * 100));
+}
+
+/** تبدیل ارقام فارسی/عربی به لاتین برای پارس عدد */
+function toEnDigits(s: string) {
+  return s
+    .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+}
+
+/** تعداد عددی نوشته‌شده در مقدار زیرشاخه (مدل قدیمی: مقدار = تعداد، مثلا value="20") */
+function seededQty(a: { key: string; value: string }) {
+  const n = Number(toEnDigits(a.value).trim());
+  return a.value.trim() !== "" && Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * شمارش هر زیرشاخه مواد اولیه (نام + تعداد):
+ * اولویت با شمارش ثبت‌شده در attrQty، سپس عدد داخل مقدار (مدل قدیمی)، وگرنه صفر.
+ */
+function resolveAttrQty(item: {
+  attrs?: { key: string; value: string }[];
+  attrQty?: { key: string; value: string; qty: number }[];
+}) {
+  return (item.attrs ?? []).map((a) => {
+    const found = (item.attrQty ?? []).find(
+      (q) => q.key === a.key && q.value === a.value,
+    );
+    return {
+      key: a.key,
+      value: a.value,
+      qty: found && found.qty > 0 ? found.qty : seededQty(a),
+    };
+  });
 }
 
 /** همه اقلام انبار؛ جستجو + فیلتر نوع (پوشاک/مواد اولیه) */
@@ -109,24 +145,34 @@ export const create = mutation({
     // material
     category: v.optional(v.string()),
     attrs: v.optional(attrsValidator),
+    attrCounts: v.optional(attrQtyValidator), // تعداد هر زیرشاخه
   },
   handler: async (ctx, args) => {
     await requireEdit(ctx, "warehouse");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const now = Date.now();
+    // شمارش زیرشاخه‌های مواد اولیه: نام + تعداد (از فرم یا عدد قدیمی داخل مقدار)
+    const { attrCounts, ...createArgs } = args;
+    const attrQty =
+      args.kind === "material"
+        ? (args.attrs ?? []).map((a) => {
+            const c = attrCounts?.find(
+              (x) => x.key === a.key && x.value === a.value,
+            );
+            return { key: a.key, value: a.value, qty: c ? c.qty : seededQty(a) };
+          })
+        : undefined;
     const totalQty =
       args.kind === "apparel"
         ? (args.sizes ?? []).reduce((s, x) => s + x.qty, 0)
-        : args.qty;
+        : attrQty && attrQty.length > 0
+          ? attrQty.reduce((s, x) => s + x.qty, 0)
+          : args.qty;
     const id = await ctx.db.insert("warehouseItems", {
-      ...args,
+      ...createArgs,
       qty: totalQty,
-      // شمارش اولیه هر زیرشاخه = کل موجودی (زیرشاخه‌های تازه‌ساخت)
-      attrQty:
-        args.kind === "material"
-          ? (args.attrs ?? []).map((a) => ({ ...a, qty: 0 }))
-          : undefined,
+      attrQty,
       searchText: makeSearchText(args),
       createdAtTs: now,
       updatedAtTs: now,
@@ -165,18 +211,39 @@ export const update = mutation({
     sizes: v.optional(sizesValidator),
     category: v.optional(v.string()),
     attrs: v.optional(attrsValidator),
+    attrCounts: v.optional(attrQtyValidator), // تعداد هر زیرشاخه
   },
-  handler: async (ctx, { id, ...args }) => {
+  handler: async (ctx, { id, attrCounts, ...args }) => {
     await requireEdit(ctx, "warehouse");
     const userId = await getAuthUserId(ctx);
     const user = userId ? await ctx.db.get(userId) : null;
     const item = await ctx.db.get(id);
     if (!item) throw new Error("قلم انبار یافت نشد");
     const now = Date.now();
+    // شمارش زیرشاخه‌ها: تعداد فرم، در نبودش شمارش قبلی، در نبودش عدد داخل مقدار (مدل قدیمی)
+    const attrQty =
+      item.kind === "material"
+        ? (args.attrs ?? []).map((a) => {
+            const c = attrCounts?.find(
+              (x) => x.key === a.key && x.value === a.value,
+            );
+            if (c) return { key: a.key, value: a.value, qty: c.qty };
+            const old = (item.attrQty ?? []).find(
+              (q) => q.key === a.key && q.value === a.value,
+            );
+            return {
+              key: a.key,
+              value: a.value,
+              qty: old && old.qty > 0 ? old.qty : seededQty(a),
+            };
+          })
+        : undefined;
     const totalQty =
       item.kind === "apparel"
         ? (args.sizes ?? []).reduce((s, x) => s + x.qty, 0)
-        : args.qty;
+        : attrQty && attrQty.length > 0
+          ? attrQty.reduce((s, x) => s + x.qty, 0)
+          : args.qty;
     // گزارش تغییرات
     const changes: { field: string; old?: string; new?: string }[] = [];
     const fieldLabels: Record<string, string> = {
@@ -218,14 +285,6 @@ export const update = mutation({
         });
       }
     }
-    // زیرشاخه‌های حذف/اضافه‌شده در ویرایش؛ شمارش زیرشاخه‌های حفظ‌شده می‌ماند
-    const keptAttrQty = (item.attrQty ?? []).filter((q) =>
-      (args.attrs ?? []).some((a) => a.key === q.key && a.value === q.value),
-    );
-    const addedAttrQty = (args.attrs ?? [])
-      .filter((a) => !(item.attrQty ?? []).some((q) => q.key === a.key && q.value === a.value))
-      .map((a) => ({ ...a, qty: 0 }));
-    const attrQty = [...keptAttrQty, ...addedAttrQty];
     await ctx.db.patch(id, {
       ...args,
       qty: totalQty,
@@ -324,33 +383,27 @@ export const adjustStock = mutation({
       });
       await ctx.db.patch(id, { sizes, qty: totalQty, updatedAtTs: now });
     } else if (attrLabel && item.kind === "material") {
-      // تغییر موجودی یک زیرشاخه خاص مواد اولیه + بازمحاسبه جمع کل
-      const attrQty = [...(item.attrQty ?? [])];
+      // تغییر موجودی یک زیرشاخه خاص مواد اولیه + بازمحاسبه جمع کل از جمع زیرشاخه‌ها
+      const attrQty = resolveAttrQty(item);
       const idx = attrQty.findIndex((a) => a.key === attrKey && a.value === attrValue);
-      // موجودی ثبت‌نشده در زیرشاخه‌ها = موجودی کل منهای جمع شمارش زیرشاخه‌ها
-      const tracked = attrQty.reduce((s, x) => s + x.qty, 0);
-      const untracked = Math.max(0, item.qty - tracked);
       if (idx === -1) {
-        if (delta > 0) {
-          // زیرشاخه تازه: ثبت مستقیم ورود در شمارش همان زیرشاخه
-          attrQty.push({ key: attrKey!, value: attrValue!, qty: delta });
-          changes.push({ field: attrLabel, new: String(delta) });
-        } else {
-          // زیرشاخه بدون شمارش: ابتدا شمارش آن از باقیمانده موجودی کل مقداردهی می‌شود، سپس خروج اعمال می‌شود
-          const newQty = Math.max(0, untracked + delta);
-          attrQty.push({ key: attrKey!, value: attrValue!, qty: newQty });
-          changes.push({ field: attrLabel, old: formatNum(untracked), new: formatNum(newQty) });
-        }
+        // زیرشاخه تازه: ثبت مستقیم ورود در شمارش همان زیرشاخه
+        const q = Math.max(0, delta);
+        attrQty.push({ key: attrKey!, value: attrValue!, qty: q });
+        changes.push({ field: attrLabel, new: formatNum(q) });
       } else {
         let oldQty = attrQty[idx].qty;
-        // قلم قدیمی که شمارش زیرشاخه‌اش هنوز از موجودی کل جدا نشده (صفر است):
-        // اول شمارش از باقیمانده موجودی کل مقداردهی می‌شود تا خروج واقعا از همان زیرشاخه کم کند
-        if (oldQty === 0 && untracked > 0) {
-          oldQty = untracked;
-          changes.push({
-            field: `${attrLabel} — تخصیص از موجودی کل`,
-            new: formatNum(untracked),
-          });
+        // زیرشاخه با شمارش صفر در خروج: موجودی ثبت‌نشده (کل منهای جمع زیرشاخه‌ها) به آن تخصیص می‌یابد
+        if (oldQty === 0 && delta < 0) {
+          const tracked = attrQty.reduce((s, x) => s + x.qty, 0);
+          const untracked = Math.max(0, item.qty - tracked);
+          if (untracked > 0) {
+            oldQty = untracked;
+            changes.push({
+              field: `${attrLabel} — تخصیص از موجودی کل`,
+              new: formatNum(untracked),
+            });
+          }
         }
         const newQty = Math.max(0, oldQty + delta);
         attrQty[idx] = { key: attrKey!, value: attrValue!, qty: newQty };
