@@ -161,7 +161,7 @@
   }
 }
 
-/* چاپ پیش‌فاکتور: فقط برگه فاکتور روی کاغذ می‌آید */
+/* چاپ فاکتور: چاپ از طریق پنجره iframe — همیشه فقط برگه تمیز A4، مستقل از تم/دارک/صفحه */
 @media print {
   body * {
     visibility: hidden;
@@ -184,22 +184,70 @@
   }
   .invoice-sheet {
     border: 0 !important;
+    box-shadow: none !important;
   }
 }
 
-/* خودکار چاپی فاکتور در حالت شب هم سفید/خوانا بماند */
-.dark .invoice-sheet {
-  background: white !important;
-  color: #111 !important;
+/* ============ برگه فاکتور A4 خوشگل (نسخه چاپی = نمایشی) ============ */
+.inv-page {
+  --inv-navy: #16255c;
+  --inv-navy2: #1d4ed8;
+  --inv-gold: #d6992e;
+  background: #ffffff;
+  color: #16255c;
+  font-family: Vazirmatn, "Segoe UI", Tahoma, Arial, sans-serif;
 }
-.dark .invoice-sheet * {
-  color: #111 !important;
-  border-color: #ddd !important;
+.inv-head {
+  background: linear-gradient(135deg, var(--inv-navy) 0%, #1e3a8a 55%, var(--inv-navy2) 130%);
+  color: #fff;
+  border-radius: 14px;
 }
-.dark .invoice-sheet .bg-muted\/60,
-.dark .invoice-sheet .bg-muted {
-  background: #f5f5f5 !important;
+.inv-th {
+  background: var(--inv-navy);
+  color: #fff;
+  font-weight: 800;
+  padding: 9px 10px;
+  white-space: nowrap;
 }
-.dark .invoice-sheet .text-blue-700 {
-  color: #1d4ed8 !important;
+.inv-row:nth-child(even) {
+  background: #f3f6fd;
 }
+.inv-total-box {
+  background: linear-gradient(135deg, #eef3ff, #e3ebff);
+  border: 1.5px solid #c7d6f7;
+  border-radius: 12px;
+}
+.inv-sign-line {
+  border-top: 2px dashed #94a3b8;
+}
+
+/* چاپ: A4 واقعی، بدون کشیدگی و بدون بریدگی — با اندازه‌های ثابت میلی‌متری */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  .inv-page {
+    width: 190mm !important;
+    min-height: auto !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .inv-page * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* جدول ممکن است در چند صفحه ادامه یابد؛ سربرگ جدول هر صفحه تکرار می‌شود */
+  .inv-table thead {
+    display: table-header-group;
+  }
+  .inv-table tr {
+    page-break-inside: avoid;
+  }
+  .inv-keep {
+    page-break-inside: avoid;
+  }
+}
+
+/* فاکتور جدید (inv-page) همیشه سفید و مستقل از دارک‌مود است — کلاس‌های خودش رنگ ثابت دارند */

@@ -32,6 +32,10 @@ import {
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useDraft } from "@/lib/useDraft";
+import {
+  useProgressiveList,
+  ListSentinel,
+} from "@/lib/useProgressiveList";
 
 type SizeRow = { size: string; qty: number };
 
@@ -954,6 +958,9 @@ function OrderHistory({
     q: search.trim() || undefined,
     status: statusFilter === "all" ? undefined : statusFilter,
   });
+  const rowsList = rows ?? [];
+  const { visible: visibleRows, sentinelRef, hasMore, remaining, showAll } =
+    useProgressiveList(rowsList, 60);
 
   return (
     <AppShell
@@ -1009,7 +1016,7 @@ function OrderHistory({
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {rows.map((o) => {
+          {visibleRows.map((o) => {
             const order = o as unknown as {
               _id: string;
               orderNo: number;
@@ -1081,6 +1088,12 @@ function OrderHistory({
           })}
         </div>
       )}
+      <ListSentinel
+        hasMore={hasMore}
+        remaining={remaining}
+        sentinelRef={sentinelRef}
+        onShowAll={showAll}
+      />
     </AppShell>
   );
 }

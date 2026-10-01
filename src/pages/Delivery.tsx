@@ -30,6 +30,10 @@ import { toast } from "sonner";
 import { useSearchParams } from "react-router";
 import { toFaDigits } from "@/lib/jalali";
 import { useCurrency } from "@/lib/currency";
+import {
+  useProgressiveList,
+  ListSentinel,
+} from "@/lib/useProgressiveList";
 import { Loader2, PackageCheck, Pencil, Printer, Search, Truck } from "lucide-react";
 
 type OrderDoc = {
@@ -98,6 +102,14 @@ export default function Delivery() {
     q: search.trim() || undefined,
     status: tab === "pending" ? "pending" : "delivered",
   });
+  const rowsList = rows ?? [];
+  const {
+    visible: visibleOrders,
+    sentinelRef,
+    hasMore,
+    remaining,
+    showAll,
+  } = useProgressiveList(rowsList, 60);
   const markDelivered = useMutation(api.orders.markDelivered);
   const appSettings = useQuery(api.appSettings.get, {});
   const deliveryMethods = appSettings?.deliveryMethods ?? ["حضوری", "اسنپ", "باربری", "پست"];
@@ -207,7 +219,7 @@ export default function Delivery() {
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {rows.map((o) => (
+          {visibleOrders.map((o) => (
             <Card key={o._id} className="group transition-shadow hover:shadow-md">
               <CardContent className="flex h-full flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -500,6 +512,13 @@ export default function Delivery() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ListSentinel
+        hasMore={hasMore}
+        remaining={remaining}
+        sentinelRef={sentinelRef}
+        onShowAll={showAll}
+      />
 
       {/* پیش‌فاکتور */}
       <InvoiceDialog orderId={invoiceId} onClose={() => setInvoiceId(null)} />

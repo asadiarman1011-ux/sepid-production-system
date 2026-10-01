@@ -34,6 +34,10 @@ import { Pencil, Printer } from "lucide-react";
 import { MapPicker } from "@/components/MapPicker";
 import { toFaDigits } from "@/lib/jalali";
 import { useCurrency } from "@/lib/currency";
+import {
+  useProgressiveList,
+  ListSentinel,
+} from "@/lib/useProgressiveList";
 import { toast } from "sonner";
 import {
   ArrowUpCircle,
@@ -124,6 +128,13 @@ export default function Customers() {
     if (!rows) return [];
     return rows;
   }, [rows]);
+  const {
+    visible: visibleCustomers,
+    sentinelRef,
+    hasMore,
+    remaining,
+    showAll,
+  } = useProgressiveList(filtered, 60);
 
   function openEdit(c: CustomerDoc) {
     setEditing(c);
@@ -268,7 +279,7 @@ export default function Customers() {
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((c) => (
+          {visibleCustomers.map((c) => (
             <Card key={c._id} className="group transition-shadow hover:shadow-md">
               <CardContent className="flex h-full flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -485,6 +496,13 @@ export default function Customers() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ListSentinel
+        hasMore={hasMore}
+        remaining={remaining}
+        sentinelRef={sentinelRef}
+        onShowAll={showAll}
+      />
 
       {/* Detail dialog */}
       {detailId && (

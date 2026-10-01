@@ -26,18 +26,18 @@ export const pushInternal = internalMutation({
   },
 });
 
-/** آخرین اعلان‌ها (همه کاربران لاگین‌شده می‌بینند) */
+/** آخرین اعلان‌ها (همه کاربران لاگین‌شده می‌بینند) — سقف ۱۰۰ برای سبک‌ماندن */
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) return [];
     const rows = await ctx.db.query("notifications").collect();
-    return rows.sort((a, b) => b.createdAtTs - a.createdAtTs).slice(0, 50);
+    return rows.sort((a, b) => b.createdAtTs - a.createdAtTs).slice(0, 100);
   },
 });
 
-/** تعداد خوانده‌نشده‌ها بر اساس notifSeenTs کاربر */
+/** تعداد خوانده‌نشده‌ها بر اساس notifSeenTs کاربر — شمارش کامل، بدون سقف */
 export const unreadCount = query({
   args: {},
   handler: async (ctx) => {

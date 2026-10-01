@@ -27,6 +27,10 @@ import {
   toFaDigits,
 } from "@/lib/jalali";
 import { useCurrency } from "@/lib/currency";
+import {
+  useProgressiveList,
+  ListSentinel,
+} from "@/lib/useProgressiveList";
 import { toast } from "sonner";
 import {
   Boxes,
@@ -168,6 +172,14 @@ export default function Warehouse() {
     q: search.trim() || undefined,
     kind: tab,
   });
+  const rowsList = rows ?? [];
+  const {
+    visible: visibleItems,
+    sentinelRef,
+    hasMore,
+    remaining,
+    showAll,
+  } = useProgressiveList(rowsList, 60);
   const createItem = useMutation(api.warehouse.create);
   const updateItem = useMutation(api.warehouse.update);
   const removeItem = useMutation(api.warehouse.remove);
@@ -360,7 +372,7 @@ export default function Warehouse() {
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {rows.map((w) => (
+          {visibleItems.map((w) => (
             <Card key={w._id} className="group transition-shadow hover:shadow-md">
               <CardContent className="flex h-full flex-col gap-2.5 p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -497,6 +509,12 @@ export default function Warehouse() {
           ))}
         </div>
       )}
+      <ListSentinel
+        hasMore={hasMore}
+        remaining={remaining}
+        sentinelRef={sentinelRef}
+        onShowAll={showAll}
+      />
 
       {/* Add/Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
