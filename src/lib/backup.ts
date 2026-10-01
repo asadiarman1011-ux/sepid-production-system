@@ -2,7 +2,7 @@ import * as XLSX from "xlsx";
 import { formatJalali, toFaDigits } from "@/lib/jalali";
 
 /** رمز ورود به بخش پشتیبان‌گیری */
-export const BACKUP_PASSWORD = "AM$#h!i@48#A";
+export { BACKUP_PASSWORD } from "@/lib/backupConst";
 
 export type BackupData = {
   customers: Record<string, unknown>[];

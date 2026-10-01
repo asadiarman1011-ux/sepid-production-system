@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   FileDown,
   Loader2,
   Lock,
+  RefreshCcw,
   ShieldCheck,
 } from "lucide-react";
 import {
@@ -25,7 +26,30 @@ import { toFaDigits } from "@/lib/jalali";
 export function BackupCard({ factoryName }: { factoryName: string }) {
   const [unlocked, setUnlocked] = useState(false);
   const [pw, setPw] = useState("");
+  const [resetting, setResetting] = useState(false);
   const data = useQuery(api.backup.exportAll, unlocked ? {} : "skip");
+  const resetAllData = useMutation(api.resetData.resetAllData);
+
+  async function handleReset() {
+    if (
+      !confirm(
+        "همه اطلاعات (مشتریان، سفارش‌ها، انبار، رویدادها، اعلان‌ها و یادگرفته‌های فرم) پاک می‌شود تا تست تازه شروع شود.\nحساب کاربران، نقش‌ها و تنظیمات کارخانه حفظ می‌شود.\n\nمطمئنید؟",
+      )
+    )
+      return;
+    setResetting(true);
+    try {
+      const r = (await resetAllData({})) as {
+        deleted?: Record<string, number>;
+      } | null;
+      const total = Object.values(r?.deleted ?? {}).reduce((s, n) => s + n, 0);
+      toast.success(`پاک‌سازی انجام شد — ${total.toLocaleString("fa-IR")} رکورد حذف شد`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "پاک‌سازی نشد");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   function tryUnlock() {
     if (pw === BACKUP_PASSWORD) {
@@ -115,6 +139,23 @@ export function BackupCard({ factoryName }: { factoryName: string }) {
             <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
               در پنجره گزارش PDF می‌توانید «Save as PDF» را انتخاب کنید تا فایل ذخیره شود.
             </p>
+            <div className="mt-4 border-t pt-4">
+              <div className="mb-2 text-xs font-black text-red-700">منطقه خطر</div>
+              <p className="mb-2 text-[11px] leading-5 text-muted-foreground">
+                پاک‌کردن کل داده‌ها برای شروع تست تازه — مشتریان، سفارش‌ها، انبار، رویدادها،
+                اعلان‌ها و مقادیر یادگرفته‌شده فرم‌ها حذف می‌شوند؛ حساب‌ها، نقش‌ها و تنظیمات
+                کارخانه حفظ می‌شوند.
+              </p>
+              <Button
+                variant="destructive"
+                className="gap-2"
+                disabled={resetting}
+                onClick={handleReset}
+              >
+                {resetting ? <Loader2 className="size-4 animate-spin" /> : <RefreshCcw className="size-4" />}
+                پاک‌کردن داده‌ها و شروع تست تازه
+              </Button>
+            </div>
           </>
         )}
       </CardContent>
