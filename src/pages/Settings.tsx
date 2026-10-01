@@ -24,6 +24,7 @@ import {
   Truck,
 } from "lucide-react";
 import { BackupCard } from "@/components/BackupCard";
+import { FactoryResetCard } from "@/components/FactoryResetCard";
 
 const THEMES: { id: string; label: string; swatch: string }[] = [
   { id: "navy", label: "سورمه‌ای (پیش‌فرض)", swatch: "bg-[#1e3a6e]" },
@@ -48,6 +49,9 @@ export default function Settings() {
   const lvl = levelOf("settings") as "none" | "view" | "full";
   const canEditSettings = isOwner || lvl === "full";
   const canViewSettings = canEditSettings || lvl === "view";
+  // ریست کارخانه فقط برای مدیر: رییس کارخانه یا کسی که دسترسی کامل «کاربران و دسترسی‌ها» دارد
+  const isAdmin =
+    isOwner || (levelOf("users") as "none" | "view" | "full") === "full";
   const settings = useQuery(api.appSettings.get, {});
   const update = useMutation(api.appSettings.update);
   const setMyTheme = useMutation(api.appSettings.setMyTheme);
@@ -414,6 +418,9 @@ export default function Settings() {
 
           {/* پشتیبان‌گیری */}
           {canEditSettings && <BackupCard factoryName={factoryName || "تولیدی پوشاک سپید"} />}
+
+          {/* ریست کارخانه — فقط مدیر */}
+          {isAdmin && <FactoryResetCard />}
 
           {/* درباره */}
           <Card>

@@ -2,16 +2,49 @@
  * چاپ تمیز یک نود از صفحه: داخل iframe مخفی با همان استایل‌های صفحه رندر می‌شود
  * تا خروجی چاپ دقیقا همان برگه خوشگل باشد — مستقل از تم/دارک‌مود و بقیه صفحه.
  *
- * نکته مهم: استایل‌های صفحه اصلی شامل قانون چاپ «body * { visibility: hidden }» است؛
+ * نکته مهم ۱ (باگ چاپ بعد از پابلیش): در نسخه پروداکشن، CSS به‌صورت یک فایل جدا
+ * (`<link rel="stylesheet">`) لود می‌شود؛ اگر همان تگ را داخل iframe کپی کنیم،
+ * چاپ قبل از رسیدن فایل CSS اجرا می‌شود و برگه «بی‌استایل» چاپ می‌شود
+ * (لوگوی غول‌آسا، جدول و سربرگ بی‌رنگ). پس متن CSS را از CSSOM
+ * (قوانین پارس‌شده) می‌خوانیم و به‌صورت <style> داخل iframe می‌نویسیم؛
+ * این‌طوری بدون هیچ انتظار شبکه‌ای، استایل‌ها از همان لحظه آماده‌اند.
+ *
+ * نکته مهم ۲: استایل‌های صفحه شامل قانون چاپ «body * { visibility: hidden }» است؛
  * داخل iframe این قانون را خنثی می‌کنیم وگرنه برگه خالی چاپ می‌شود!
  */
+
+/** متن قوانین یک استایل‌شیت؛ اگر cross-origin باشد null برمی‌گرداند */
+function sheetCssText(sheet: CSSStyleSheet): string | null {
+  try {
+    const rules = sheet.cssRules;
+    let out = "";
+    for (let i = 0; i < rules.length; i++) {
+      out += `${rules[i].cssText}\n`;
+    }
+    return out;
+  } catch {
+    return null; // شیت cross-origin (مثل فونت گوگل) قابل خواندن نیست
+  }
+}
 
 /** استایل‌های لازم را از صفحه می‌گیریم تا iframe همان ظاهر را داشته باشد */
 function collectStyles(): string {
   const out: string[] = [];
-  for (const el of document.querySelectorAll('style, link[rel="stylesheet"]')) {
+
+  // ۱) تگ‌های <style> صفحه (نسخه dev / استایل‌های inline) — عینا کپی
+  document.querySelectorAll("style").forEach((el) => {
     out.push(el.outerHTML);
-  }
+  });
+
+  // ۲) فایل‌های CSS لینک‌شده: متن قوانین پارس‌شده را inline می‌کنیم
+  document
+    .querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')
+    .forEach((link) => {
+      const css = link.sheet ? sheetCssText(link.sheet) : null;
+      if (css && css.trim()) out.push(`<style>${css}</style>`);
+      else out.push(link.outerHTML); // cross-origin → با همان لینک لود شود
+    });
+
   return out.join("\n");
 }
 
@@ -57,6 +90,7 @@ ${collectStyles()}
     margin: 0 auto !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+    overflow: visible !important; /* جدول طولانی در چند صفحه ادامه یابد، نه این که بریده شود */
   }
 </style>
 </head>
@@ -66,52 +100,65 @@ ${collectStyles()}
 
   const win = iframe.contentWindow;
 
-  // منتظر استایل‌ها و فونت‌ها می‌مانیم (با سقف زمانی) تا چاپ ناقص نشود
-  const fontLink = doc.querySelector('link[rel="stylesheet"]');
-  const linkReady: Promise<void> = fontLink
-    ? new Promise((resolve) => {
-        let done = false;
-        const finish = () => {
-          if (!done) {
-            done = true;
-            resolve();
-          }
-        };
-        fontLink.addEventListener("load", finish);
-        fontLink.addEventListener("error", finish);
-        setTimeout(finish, 1500);
-      })
-    : Promise.resolve();
+  const cleanup = () => {
+    setTimeout(() => iframe.remove(), 500);
+  };
 
-  const fontsReady: Promise<void> = (
-    win.document.fonts?.ready as unknown as Promise<void>
-  ) ?? Promise.resolve();
+  /** افزودن نسخه کپی‌شده و چاپ */
+  const renderAndPrint = () => {
+    try {
+      const clone = doc.importNode(element, true) as HTMLElement;
+      clone.removeAttribute("id");
+      doc.body.appendChild(clone);
+      // اجازه رفرش-لایوت قبل از چاپ
+      void doc.body.offsetHeight;
 
-  Promise.race([Promise.all([linkReady, fontsReady]), new Promise((r) => setTimeout(r, 2000))]).then(
-    () => {
-      try {
-        const clone = doc.importNode(element, true) as HTMLElement;
-        clone.removeAttribute("id");
-        doc.body.appendChild(clone);
-        // اجازه رفرش-لایوت قبل از چاپ
-        void doc.body.offsetHeight;
-
-        const cleanup = () => {
-          setTimeout(() => {
-            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-          }, 500);
-        };
-
-        // بعضی مرورگرها یک فریم برای رندر نهایی لازم دارند
+      const finish = () => {
         win.requestAnimationFrame(() => {
           win.focus();
           win.print();
           cleanup();
         });
-      } catch {
-        iframe.remove();
-        window.print();
+      };
+
+      // فونت‌ها تازه بعد از افزودن محتوا لود می‌شوند؛ با سقف زمانی کوتاه صبر می‌کنیم
+      const fonts = win.document.fonts?.ready as unknown as Promise<void> | undefined;
+      if (fonts) {
+        let settled = false;
+        const go = () => {
+          if (settled) return;
+          settled = true;
+          finish();
+        };
+        fonts.then(go, go);
+        setTimeout(go, 900);
+      } else {
+        finish();
       }
-    },
+    } catch {
+      iframe.remove();
+      window.print();
+    }
+  };
+
+  // فقط لینک‌های CSS باقی‌مانده (مثل فونت گوگل) را با سقف زمانی کوتاه منتظر می‌مانیم
+  const links = Array.from(
+    doc.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
   );
+  const linksReady = Promise.all(
+    links.map(
+      (link) =>
+        new Promise<void>((resolve) => {
+          if (link.sheet) return resolve();
+          link.addEventListener("load", () => resolve());
+          link.addEventListener("error", () => resolve());
+          setTimeout(resolve, 1200);
+        }),
+    ),
+  );
+
+  Promise.race([
+    linksReady,
+    new Promise((resolve) => setTimeout(resolve, 1200)),
+  ]).then(renderAndPrint);
 }
