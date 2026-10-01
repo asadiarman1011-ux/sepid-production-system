@@ -306,7 +306,7 @@ export const update = mutation({
       link: "/dashboard/delivery",
       byName: user?.name ?? user?.email ?? undefined,
     });
-    return { ok: true };
+    return { id, orderNo: order.orderNo };
   },
 });
 

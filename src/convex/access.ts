@@ -2,6 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
+import { canView, requireEdit } from "./perms";
 
 export const SECTIONS = [
   "orders",
@@ -118,6 +119,9 @@ export const getMyAccess = query({
       email: user.email ?? null,
       name: user.name ?? null,
       jobTitle: user.jobTitle ?? null,
+      // تنظیمات شخصی هر کاربر (تم رنگی و دارک‌مود خودش)
+      themeColor: user.themeColor ?? null,
+      themeDark: user.themeDark ?? null,
       settings: settings[0] ?? null,
     };
   },
@@ -131,8 +135,9 @@ export const listUsers = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) return [];
+    // رییس یا هرکس که دسترسی «کاربران و دسترسی‌ها» را دارد (view یا full)
+    if (!(await canView(ctx, "users"))) return [];
     const settings = await ctx.db.query("settings").collect();
-    if (settings[0]?.ownerId !== userId) return [];
     const users = await ctx.db.query("users").collect();
     const roles = await ctx.db.query("roles").collect();
     return users
@@ -171,10 +176,11 @@ export const updateUserProfile = mutation({
     jobTitle: v.optional(v.string()),
   },
   handler: async (ctx, { userId, name, jobTitle }) => {
-    const me = await getAuthUserId(ctx);
+    // رییس یا کسی که دسترسی کامل بخش «کاربران» دارد
+    await requireEdit(ctx, "users");
     const settings = await ctx.db.query("settings").collect();
-    if (me === null || settings[0]?.ownerId !== me) {
-      throw new Error("فقط رییس کارخانه می‌تواند پروفایل کارمندان را ویرایش کند");
+    if (settings[0]?.ownerId === userId) {
+      throw new Error("پروفایل رییس کارخانه فقط توسط خودش قابل ویرایش است");
     }
     await ctx.db.patch(userId, { name, jobTitle });
     return { ok: true };
@@ -198,11 +204,8 @@ export const upsertRole = mutation({
     levels: v.record(v.string(), permLevelValidator),
   },
   handler: async (ctx, { id, name, levels }) => {
-    const userId = await getAuthUserId(ctx);
-    const settings = await ctx.db.query("settings").collect();
-    if (userId === null || settings[0]?.ownerId !== userId) {
-      throw new Error("فقط رییس کارخانه می‌تواند دسترسی‌ها را تغییر دهد");
-    }
+    // رییس یا کسی که دسترسی کامل بخش «کاربران» دارد
+    await requireEdit(ctx, "users");
     if (id) {
       const existing = await ctx.db.get(id);
       if (existing?.name === "رییس کارخانه") {
@@ -222,11 +225,8 @@ export const upsertRole = mutation({
 export const deleteRole = mutation({
   args: { id: v.id("roles") },
   handler: async (ctx, { id }) => {
-    const userId = await getAuthUserId(ctx);
-    const settings = await ctx.db.query("settings").collect();
-    if (userId === null || settings[0]?.ownerId !== userId) {
-      throw new Error("فقط رییس کارخانه می‌تواند نقش را حذف کند");
-    }
+    // رییس یا کسی که دسترسی کامل بخش «کاربران» دارد
+    await requireEdit(ctx, "users");
     const role = await ctx.db.get(id);
     if (role?.name === "رییس کارخانه") {
       throw new Error("نقش رییس کارخانه قابل حذف نیست");
@@ -244,12 +244,18 @@ export const setUserRole = mutation({
   args: { userId: v.id("users"), roleId: v.optional(v.id("roles")) },
   handler: async (ctx, { userId, roleId }) => {
     const me = await getAuthUserId(ctx);
+    // رییس یا کسی که دسترسی کامل بخش «کاربران» دارد
+    await requireEdit(ctx, "users");
     const settings = await ctx.db.query("settings").collect();
-    if (me === null || settings[0]?.ownerId !== me) {
-      throw new Error("فقط رییس کارخانه می‌تواند دسترسی کارمندان را تغییر دهد");
-    }
     if (settings[0]?.ownerId === userId) {
       throw new Error("دسترسی رییس کارخانه قابل تغییر نیست");
+    }
+    if (roleId) {
+      const targetRole = await ctx.db.get(roleId);
+      // نقش رییس فقط توسط خود رییس قابل تخصیص است (جلوگیری از ارتقای خودخواهانه)
+      if (targetRole?.name === "رییس کارخانه" && settings[0]?.ownerId !== me) {
+        throw new Error("انتخاب نقش «رییس کارخانه» فقط توسط خود رییس ممکن است");
+      }
     }
     await ctx.db.patch(userId, { roleId });
   },
@@ -259,11 +265,9 @@ export const setUserRole = mutation({
 export const removeEmployee = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    const me = await getAuthUserId(ctx);
+    // رییس یا کسی که دسترسی کامل بخش «کاربران» دارد
+    await requireEdit(ctx, "users");
     const settings = await ctx.db.query("settings").collect();
-    if (me === null || settings[0]?.ownerId !== me) {
-      throw new Error("فقط رییس کارخانه می‌تواند کارمند را حذف کند");
-    }
     if (settings[0]?.ownerId === userId) {
       throw new Error("رییس کارخانه قابل حذف نیست");
     }

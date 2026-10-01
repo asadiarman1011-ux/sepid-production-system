@@ -14,12 +14,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "@/components/status-badges";
+import { InvoiceDialog } from "@/components/InvoiceDialog";
 import { toast } from "sonner";
 import { toFaDigits, todayJalaliLabel, jalaliLabelToTs } from "@/lib/jalali";
 import { useCurrency } from "@/lib/currency";
 import {
   BadgePlus,
   CheckCircle2,
+  FileText,
   History as HistoryIcon,
   Loader2,
   Package,
@@ -136,6 +138,9 @@ export default function NewOrder() {
   const [saving, setSaving] = useState(false);
   const loadedEdit = useRef(false);
   const [showHistory, setShowHistory] = useState(false);
+  // فاکتور: بعد از ثبت سفارش (یا از تاریخچه) باز می‌شود؛ قابل چاپ و PDF
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [afterInvoiceNavigate, setAfterInvoiceNavigate] = useState<string | null>(null);
 
   const createOrder = useMutation(api.orders.create);
   const updateOrder = useMutation(api.orders.update);
@@ -313,7 +318,7 @@ export default function NewOrder() {
     setSaving(true);
     try {
       if (isEditMode && editId) {
-        await updateOrder({
+        const res = await updateOrder({
           id: editId as never,
           customerName: header.customerName.trim() || header.companyName.trim(),
           companyName: header.companyName.trim() || undefined,
@@ -353,10 +358,12 @@ export default function NewOrder() {
           notes: notes.trim() || undefined,
         });
         toast.success("سفارش با موفقیت ویرایش شد");
-        navigate(-1);
+        const savedId = (res as { id?: string } | null)?.id ?? editId;
+        setInvoiceId(savedId);
+        setShowHistory(false);
         return;
       }
-      await createOrder({
+      const created = await createOrder({
         customerId: (customerId ?? undefined) as never,
         customerName: header.customerName.trim() || header.companyName.trim(),
         companyName: header.companyName.trim() || undefined,
@@ -413,7 +420,14 @@ export default function NewOrder() {
         ? `${header.customerName.trim()} — ${header.companyName.trim()}`
         : header.customerName.trim() || header.companyName.trim();
       toast.success(`سفارش برای «${shownName}» ثبت شد و به مشتریان اضافه شد`);
-      navigate("/dashboard/customers");
+      // نمایش فاکتور برای ثبت/چاپ/PDF — بعد از بستن، به مشتریان می‌رود
+      const newId = (created as { id?: string } | null)?.id ?? null;
+      if (newId) {
+        setInvoiceId(newId);
+        setAfterInvoiceNavigate("/dashboard/customers");
+      } else {
+        navigate("/dashboard/customers");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطا در ثبت سفارش");
     } finally {
@@ -434,7 +448,24 @@ export default function NewOrder() {
   }
 
   if (showHistory) {
-    return <OrderHistory onBack={() => setShowHistory(false)} />;
+    return (
+      <>
+        <OrderHistory
+          onBack={() => setShowHistory(false)}
+          onInvoice={(id) => setInvoiceId(id)}
+        />
+        <InvoiceDialog
+          orderId={invoiceId}
+          onClose={() => {
+            setInvoiceId(null);
+            if (afterInvoiceNavigate) {
+              navigate(afterInvoiceNavigate);
+              setAfterInvoiceNavigate(null);
+            }
+          }}
+        />
+      </>
+    );
   }
 
   return (
@@ -882,6 +913,17 @@ export default function NewOrder() {
           </Card>
         </div>
       </div>
+      {/* فاکتور بعد از ثبت سفارش — قابل چاپ و ذخیره PDF */}
+      <InvoiceDialog
+        orderId={invoiceId}
+        onClose={() => {
+          setInvoiceId(null);
+          if (afterInvoiceNavigate) {
+            navigate(afterInvoiceNavigate);
+            setAfterInvoiceNavigate(null);
+          }
+        }}
+      />
     </AppShell>
   );
 }
@@ -890,7 +932,13 @@ export default function NewOrder() {
  * تاریخچه سفارش‌ها: جستجو (نام/تلفن/محصول/شهر)، فیلتر وضعیت،
  * مشاهده و ویرایش هر سفارش — گذشته و حال.
  */
-function OrderHistory({ onBack }: { onBack: () => void }) {
+function OrderHistory({
+  onBack,
+  onInvoice,
+}: {
+  onBack: () => void;
+  onInvoice: (orderId: string) => void;
+}) {
   const navigate = useNavigate();
   const { money } = useCurrency();
   const [searchInput, setSearchInput] = useState("");
@@ -982,6 +1030,7 @@ function OrderHistory({ onBack }: { onBack: () => void }) {
                   navigate(`/dashboard/new-order?edit=${order._id}`);
                 }}
               >
+                {/* دکمه فاکتور — مستقل از کلیک کارت */}
                 <CardContent className="flex h-full flex-col gap-2.5 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -1012,9 +1061,18 @@ function OrderHistory({ onBack }: { onBack: () => void }) {
                     {order.items.map((i) => `${i.productType} (${toFaDigits(i.qty)})`).join("، ")}
                   </div>
                   <div className="mt-auto flex items-center justify-between border-t pt-2.5">
-                    <span className="text-xs text-muted-foreground">
-                      {toFaDigits(order.items.length)} قلم
-                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1.5 px-2.5 text-[11px] font-bold"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onInvoice(order._id);
+                      }}
+                    >
+                      <FileText className="size-3.5" />
+                      فاکتور
+                    </Button>
                     <span className="font-black text-blue-700">{money(order.total)}</span>
                   </div>
                 </CardContent>

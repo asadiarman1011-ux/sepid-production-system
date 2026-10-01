@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireEdit } from "./perms";
 
 /** خواندن تنظیمات (برای همه کاربران لاگین‌شده) */
 export const get = query({
@@ -39,11 +40,8 @@ export const update = mutation({
     colorTheme: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    const settingsRows = await ctx.db.query("settings").collect();
-    if (userId === null || settingsRows[0]?.ownerId !== userId) {
-      throw new Error("فقط رییس کارخانه می‌تواند تنظیمات را تغییر دهد");
-    }
+    // رییس یا کسی که دسترسی کامل بخش «تنظیمات» دارد
+    await requireEdit(ctx, "settings");
     const rows = await ctx.db.query("appSettings").collect();
     const patch = { ...args, updatedAtTs: Date.now() };
     if (rows[0]) {

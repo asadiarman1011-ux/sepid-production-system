@@ -78,7 +78,32 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => setMobileOpen(false), [location.pathname]);
 
-  const visible = SECTIONS.filter((s) => isOwner || canAccess(perms, s.id));
+  // تنظیمات شخصی هر کاربر: تم رنگی و دارک‌مود خودش (از سرور، همراه حساب)
+  const myTheme = access?.themeColor as string | null | undefined;
+  const myDark = access?.themeDark as boolean | null | undefined;
+  useEffect(() => {
+    if (myTheme) {
+      document.documentElement.setAttribute("data-theme", myTheme);
+      try {
+        localStorage.setItem("color-theme", myTheme);
+      } catch {
+        /* noop */
+      }
+    }
+    if (typeof myDark === "boolean") {
+      document.documentElement.classList.toggle("dark", myDark);
+      try {
+        localStorage.setItem("dark-mode", myDark ? "1" : "0");
+      } catch {
+        /* noop */
+      }
+    }
+  }, [myTheme, myDark]);
+
+  // «تنظیمات» همیشه دیده می‌شود — کاربر بدون دسترسی، فقط تنظیمات شخصی خودش را می‌بیند
+  const visible = SECTIONS.filter(
+    (s) => s.id === "settings" || isOwner || canAccess(perms, s.id),
+  );
 
   const navItems = [
     { id: "home", label: "خانه", icon: LayoutDashboard, path: "/dashboard" },

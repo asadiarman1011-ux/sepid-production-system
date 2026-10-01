@@ -23,6 +23,7 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
+import { BackupCard } from "@/components/BackupCard";
 
 const THEMES: { id: string; label: string; swatch: string }[] = [
   { id: "navy", label: "سورمه‌ای (پیش‌فرض)", swatch: "bg-[#1e3a6e]" },
@@ -43,7 +44,10 @@ type AppSettings = {
 };
 
 export default function Settings() {
-  const { isOwner } = useMyAccess();
+  const { isOwner, isLoading, levelOf, access } = useMyAccess();
+  const lvl = levelOf("settings") as "none" | "view" | "full";
+  const canEditSettings = isOwner || lvl === "full";
+  const canViewSettings = canEditSettings || lvl === "view";
   const settings = useQuery(api.appSettings.get, {});
   const update = useMutation(api.appSettings.update);
   const setMyTheme = useMutation(api.appSettings.setMyTheme);
@@ -96,7 +100,41 @@ export default function Settings() {
     }
   }, [settings, loaded]);
 
+  // تم و حالت شب شخصیِ ذخیره‌شده روی حساب کاربر (از سرور) اولویت دارد
+  const myTheme = access?.themeColor as string | null | undefined;
+  const myDark = access?.themeDark as boolean | null | undefined;
+  useEffect(() => {
+    if (myTheme) setColorTheme(myTheme);
+    if (typeof myDark === "boolean") setDarkMode(myDark);
+  }, [myTheme, myDark]);
+
+  function pickTheme(id: string) {
+    setColorTheme(id);
+    document.documentElement.setAttribute("data-theme", id);
+    try {
+      localStorage.setItem("color-theme", id);
+    } catch {
+      /* noop */
+    }
+    setMyTheme({ colorTheme: id }).catch(() => {});
+  }
+
+  function toggleDark(on: boolean) {
+    setDarkMode(on);
+    document.documentElement.classList.toggle("dark", on);
+    try {
+      localStorage.setItem("dark-mode", on ? "1" : "0");
+    } catch {
+      /* noop */
+    }
+    setMyTheme({ darkMode: on }).catch(() => {});
+  }
+
   async function handleSave() {
+    if (!canEditSettings) {
+      toast.error("شما اجازه تغییر تنظیمات کلی را ندارید");
+      return;
+    }
     setSaving(true);
     try {
       await update({
@@ -116,14 +154,28 @@ export default function Settings() {
     }
   }
 
-  if (!isOwner) {
+  if (isLoading) {
     return (
       <AppShell title="تنظیمات">
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            فقط رییس کارخانه به تنظیمات دسترسی دارد.
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  // بدون دسترسی به تنظیمات: فقط تنظیمات شخصی (تم و حالت شب خودت)
+  if (!canViewSettings) {
+    return (
+      <AppShell title="تنظیمات" subtitle="تنظیمات شخصی حساب شما">
+        <div className="mx-auto grid max-w-3xl gap-5">
+          <ThemeCard colorTheme={colorTheme} onPick={pickTheme} />
+          <DarkModeCard darkMode={darkMode} onToggle={toggleDark} />
+          <p className="text-center text-xs leading-6 text-muted-foreground">
+            برای دیدن و تغییر تنظیمات کلی سامانه (اطلاعات کارخانه، روش‌های تحویل، انبار و
+            پشتیبان‌گیری) باید دسترسی بخش «تنظیمات» را داشته باشید.
+          </p>
+        </div>
       </AppShell>
     );
   }
@@ -143,12 +195,19 @@ export default function Settings() {
       title="تنظیمات"
       subtitle="پیکربندی کلی سامانه، اطلاعات کارخانه و روش‌های تحویل"
       actions={
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
-          {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          ذخیره تنظیمات
-        </Button>
+        canEditSettings ? (
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
+            {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            ذخیره تنظیمات
+          </Button>
+        ) : undefined
       }
     >
+      {!canEditSettings && (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+          دسترسی شما به تنظیمات «فقط مشاهده» است؛ تم و حالت شب شخصی خودت را می‌توانی عوض کنی.
+        </div>
+      )}
       <div className="grid gap-5 lg:grid-cols-2">
         {/* اطلاعات کارخانه */}
         <Card>
@@ -166,6 +225,7 @@ export default function Settings() {
                 onChange={(e) => setFactoryName(e.target.value)}
                 placeholder="تولیدی پوشاک سپید"
                 className="h-11 border-2 font-medium"
+                disabled={!canEditSettings}
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 این نام در سایدبار و صفحات سامانه نمایش داده می‌شود
@@ -179,6 +239,7 @@ export default function Settings() {
                   onChange={(e) => setDefaultCity(e.target.value)}
                   placeholder="مثلا تهران"
                   className="h-11 border-2"
+                  disabled={!canEditSettings}
                 />
               </div>
               <div>
@@ -189,6 +250,7 @@ export default function Settings() {
                   placeholder="تومان / ریال"
                   className="h-11 border-2"
                   list="currency-suggestions"
+                  disabled={!canEditSettings}
                 />
                 <datalist id="currency-suggestions">
                   <option value="تومان" />
@@ -211,6 +273,7 @@ export default function Settings() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 className="h-11 border-2"
+                disabled={!canEditSettings}
               />
             </div>
             <div>
@@ -221,6 +284,7 @@ export default function Settings() {
                 dir="ltr"
                 style={{ textAlign: "right" }}
                 className="h-11 border-2"
+                disabled={!canEditSettings}
               />
             </div>
           </CardContent>
@@ -246,19 +310,22 @@ export default function Settings() {
                     className="flex items-center gap-1.5 rounded-full border-2 border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-bold text-blue-800"
                   >
                     {m}
-                    <button
-                      type="button"
-                      onClick={() => setMethods((prev) => prev.filter((_, j) => j !== i))}
-                      className="text-blue-400 hover:text-blue-700"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
+                    {canEditSettings && (
+                      <button
+                        type="button"
+                        onClick={() => setMethods((prev) => prev.filter((_, j) => j !== i))}
+                        className="text-blue-400 hover:text-blue-700"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
                   </span>
                 ))}
                 {methods.length === 0 && (
                   <span className="text-xs text-muted-foreground">روشی ثبت نشده</span>
                 )}
               </div>
+              {canEditSettings && (
               <div className="flex gap-2">
                 <Input
                   value={newMethod}
@@ -291,10 +358,11 @@ export default function Settings() {
                   افزودن
                 </Button>
               </div>
+              )}
             </CardContent>
           </Card>
 
-        {/* تم رنگی */}
+        {/* تم رنگی شخصی */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -304,71 +372,14 @@ export default function Settings() {
           </CardHeader>
           <CardContent>
             <p className="mb-3 text-xs leading-6 text-muted-foreground">
-              رنگ اصلی و سایدبار همه بخش‌ها فورا عوض می‌شود؛ انتخاب تو در همین مرورگر ذخیره می‌شود
+              رنگ اصلی و سایدبار فورا عوض می‌شود؛ این انتخاب شخصیِ حساب توست و روی دیگران اثری ندارد
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              {THEMES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => {
-                    // اعمال فوری + ذخیره محلی + ذخیره سراسری برای این کاربر
-                    setColorTheme(t.id);
-                    document.documentElement.setAttribute("data-theme", t.id);
-                    try {
-                      localStorage.setItem("color-theme", t.id);
-                    } catch {
-                      /* noop */
-                    }
-                    setMyTheme({ colorTheme: t.id }).catch(() => {});
-                  }}
-                  className={`flex items-center gap-2.5 rounded-xl border-2 p-3 text-right text-sm font-bold transition-all ${
-                    colorTheme === t.id
-                      ? "border-blue-600 bg-blue-50 shadow-sm"
-                      : "border-border hover:border-blue-300"
-                  }`}
-                >
-                  <span className={`size-6 shrink-0 rounded-lg shadow-inner ${t.swatch}`} />
-                  {t.label}
-                  {colorTheme === t.id && <Check className="mr-auto size-4 text-blue-700" />}
-                </button>
-              ))}
-            </div>
+            <ThemePicker colorTheme={colorTheme} onPick={pickTheme} />
           </CardContent>
         </Card>
 
-        {/* دارک مود */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Moon className="size-4 text-blue-700" />
-              حالت شب (Dark Mode)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
-              <div>
-                <div className="text-sm font-bold">فعال‌سازی حالت شب</div>
-                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                  کل سامانه با تم تیره نمایش داده می‌شود — برای کار در محیط کم‌نور
-                </p>
-              </div>
-              <Switch
-                checked={darkMode}
-                onCheckedChange={(on) => {
-                  setDarkMode(on);
-                  document.documentElement.classList.toggle("dark", on);
-                  try {
-                    localStorage.setItem("dark-mode", on ? "1" : "0");
-                  } catch {
-                    /* noop */
-                  }
-                  setMyTheme({ darkMode: on }).catch(() => {});
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* دارک مود شخصی */}
+        <DarkModeCard darkMode={darkMode} onToggle={toggleDark} />
 
         {/* انبار */}
         <Card>
@@ -391,6 +402,7 @@ export default function Settings() {
                   className="h-11 border-2"
                   dir="ltr"
                   style={{ textAlign: "right" }}
+                  disabled={!canEditSettings}
                 />
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   اقلامی که موجودی‌شان به این عدد برسد با رنگ قرمز هشدار داده می‌شوند
@@ -399,6 +411,9 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          {/* پشتیبان‌گیری */}
+          {canEditSettings && <BackupCard factoryName={factoryName || "تولیدی پوشاک سپید"} />}
 
           {/* درباره */}
           <Card>
@@ -411,7 +426,7 @@ export default function Settings() {
             <CardContent className="text-sm leading-7 text-muted-foreground">
               <div className="flex items-center justify-between py-1">
                 <span>نسخه</span>
-                <span className="font-bold text-foreground">۱.۱</span>
+                <span className="font-bold text-foreground">۱.۲</span>
               </div>
               <Separator className="my-2" />
               <div className="flex items-center justify-between py-1">
@@ -431,5 +446,92 @@ export default function Settings() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+/* ------------------------- کارت‌های مشترک تنظیمات شخصی ------------------------ */
+
+function ThemePicker({
+  colorTheme,
+  onPick,
+}: {
+  colorTheme: string;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {THEMES.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => onPick(t.id)}
+                  className={`flex items-center gap-2.5 rounded-xl border-2 p-3 text-right text-sm font-bold transition-all ${
+                    colorTheme === t.id
+                      ? "border-blue-600 bg-blue-50 shadow-sm"
+                      : "border-border hover:border-blue-300"
+                  }`}
+                >
+          <span className={`size-6 shrink-0 rounded-lg shadow-inner ${t.swatch}`} />
+          {t.label}
+          {colorTheme === t.id && <Check className="mr-auto size-4 text-blue-700" />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ThemeCard({
+  colorTheme,
+  onPick,
+}: {
+  colorTheme: string;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Palette className="size-4 text-blue-700" />
+          تم رنگی من
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="mb-3 text-xs leading-6 text-muted-foreground">
+          رنگ اصلی و سایدبار فورا عوض می‌شود؛ این انتخاب شخصیِ حساب توست و با هر دستگاهی که وارد
+          شوی همراهت می‌ماند
+        </p>
+        <ThemePicker colorTheme={colorTheme} onPick={onPick} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function DarkModeCard({
+  darkMode,
+  onToggle,
+}: {
+  darkMode: boolean;
+  onToggle: (on: boolean) => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Moon className="size-4 text-blue-700" />
+          حالت شب (Dark Mode)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
+          <div>
+            <div className="text-sm font-bold">فعال‌سازی حالت شب</div>
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+              کل سامانه با تم تیره نمایش داده می‌شود — برای کار در محیط کم‌نور
+            </p>
+          </div>
+          <Switch checked={darkMode} onCheckedChange={onToggle} />
+        </div>
+      </CardContent>
+    </Card>
   );
 }

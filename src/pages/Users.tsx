@@ -46,8 +46,11 @@ function levelsOf(r: RoleDoc): Levels {
 }
 
 export default function Users() {
-  const { isOwner } = useAccessGuard();
-  const users = useQuery(api.access.listUsers, isOwner ? {} : "skip");
+  const { isOwner, levelOf } = useMyAccess();
+  const usersLvl = levelOf("users") as "none" | "view" | "full";
+  const canViewUsers = isOwner || usersLvl !== "none";
+  const canEditUsers = isOwner || usersLvl === "full";
+  const users = useQuery(api.access.listUsers, canViewUsers ? {} : "skip");
   const roles = useQuery(api.access.listRoles, {});
   const upsertRole = useMutation(api.access.upsertRole);
   const deleteRole = useMutation(api.access.deleteRole);
@@ -118,12 +121,12 @@ export default function Users() {
     }
   }
 
-  if (!isOwner) {
+  if (!canViewUsers) {
     return (
       <AppShell title="کاربران و دسترسی‌ها">
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            فقط رییس کارخانه به این بخش دسترسی دارد.
+            شما به بخش کاربران و دسترسی‌ها دسترسی ندارید.
           </CardContent>
         </Card>
       </AppShell>
@@ -135,12 +138,20 @@ export default function Users() {
       title="کاربران و دسترسی‌ها"
       subtitle="برای هر بخش تعیین کن: هیچ / فقط مشاهده / دسترسی کامل"
       actions={
-        <Button onClick={() => openEdit(null)} className="gap-2 shadow-md shadow-blue-600/20">
-          <Plus className="size-4" />
-          نقش جدید
-        </Button>
+        canEditUsers ? (
+          <Button onClick={() => openEdit(null)} className="gap-2 shadow-md shadow-blue-600/20">
+            <Plus className="size-4" />
+            نقش جدید
+          </Button>
+        ) : undefined
       }
     >
+      {!canEditUsers && (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+          دسترسی شما به این بخش «فقط مشاهده» است؛ برای تغییر نقش‌ها و دسترسی‌ها با رییس کارخانه
+          هماهنگ کنید.
+        </div>
+      )}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* کارکنان */}
         <Card className="rounded-2xl border-border/70 shadow-sm">
@@ -195,46 +206,50 @@ export default function Users() {
                       <div className="flex shrink-0 items-center gap-2">
                         {!u.isOwner && (
                           <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8"
-                              title="ویرایش نام و شغل"
-                              onClick={() => openProfileEdit(u)}
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                            <select
-                              className="h-9 max-w-36 rounded-lg border-2 bg-background px-2 text-xs font-medium"
-                              value={u.roleId ?? ""}
-                              onChange={async (e) => {
-                                const roleId = e.target.value || undefined;
-                                await setUserRole({
-                                  userId: u._id as never,
-                                  roleId: roleId as never,
-                                });
-                                toast.success("نقش کاربر به‌روزرسانی شد");
-                              }}
-                            >
-                              <option value="">— بدون نقش —</option>
-                              {roles.map((r: RoleDoc) => (
-                                <option key={r._id} value={r._id}>
-                                  {r.name}
-                                </option>
-                              ))}
-                            </select>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-destructive hover:bg-destructive/10"
-                              onClick={async () => {
-                                if (!confirm(`حذف دسترسی کارمند «${u.name || u.email}»؟`)) return;
-                                await removeEmployee({ userId: u._id as never });
-                                toast.success("کارمند حذف شد");
-                              }}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
+                            {canEditUsers && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8"
+                                  title="ویرایش نام و شغل"
+                                  onClick={() => openProfileEdit(u)}
+                                >
+                                  <Pencil className="size-4" />
+                                </Button>
+                                <select
+                                  className="h-9 max-w-36 rounded-lg border-2 bg-background px-2 text-xs font-medium"
+                                  value={u.roleId ?? ""}
+                                  onChange={async (e) => {
+                                    const roleId = e.target.value || undefined;
+                                    await setUserRole({
+                                      userId: u._id as never,
+                                      roleId: roleId as never,
+                                    });
+                                    toast.success("نقش کاربر به‌روزرسانی شد");
+                                  }}
+                                >
+                                  <option value="">— بدون نقش —</option>
+                                  {roles.map((r: RoleDoc) => (
+                                    <option key={r._id} value={r._id}>
+                                      {r.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8 text-destructive hover:bg-destructive/10"
+                                  onClick={async () => {
+                                    if (!confirm(`حذف دسترسی کارمند «${u.name || u.email}»؟`)) return;
+                                    await removeEmployee({ userId: u._id as never });
+                                    toast.success("کارمند حذف شد");
+                                  }}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </>
+                            )}
                           </>
                         )}
                       </div>
@@ -301,7 +316,7 @@ export default function Users() {
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
-                        {r.name !== "رییس کارخانه" && (
+                        {canEditUsers && r.name !== "رییس کارخانه" && (
                           <>
                             <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(r)}>
                               <Pencil className="size-4" />
@@ -426,6 +441,3 @@ export default function Users() {
   );
 }
 
-function useAccessGuard() {
-  return useMyAccess();
-}

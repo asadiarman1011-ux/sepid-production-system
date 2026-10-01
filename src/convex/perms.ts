@@ -41,13 +41,13 @@ export async function canView(ctx: QueryCtx | MutationCtx, section: string) {
 }
 
 /** آیا کاربر می‌تواند ثبت/ویرایش/حذف کند؟ (فقط full) */
-export async function canEdit(ctx: MutationCtx, section: string) {
+export async function canEdit(ctx: QueryCtx | MutationCtx, section: string) {
   const { isOwner, levels } = await myPerms(ctx);
   return isOwner || levels[section] === "full";
 }
 
 /** اگر اجازه ویرایش نداشت خطای فارسی می‌دهد */
-export async function requireEdit(ctx: MutationCtx, section: string) {
+export async function requireEdit(ctx: QueryCtx | MutationCtx, section: string) {
   if (!(await canEdit(ctx, section))) {
     throw new Error("شما فقط اجازه مشاهده دارید؛ برای ثبت یا ویرایش با رییس کارخانه هماهنگ کنید");
   }
