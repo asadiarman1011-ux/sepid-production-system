@@ -1,6 +1,9 @@
 /**
  * چاپ تمیز یک نود از صفحه: داخل iframe مخفی با همان استایل‌های صفحه رندر می‌شود
  * تا خروجی چاپ دقیقا همان برگه خوشگل باشد — مستقل از تم/دارک‌مود و بقیه صفحه.
+ *
+ * نکته مهم: استایل‌های صفحه اصلی شامل قانون چاپ «body * { visibility: hidden }» است؛
+ * داخل iframe این قانون را خنثی می‌کنیم وگرنه برگه خالی چاپ می‌شود!
  */
 
 /** استایل‌های لازم را از صفحه می‌گیریم تا iframe همان ظاهر را داشته باشد */
@@ -12,25 +15,22 @@ function collectStyles(): string {
   return out.join("\n");
 }
 
-/**
- * element را در iframe مخفی چاپ می‌کند.
- * لازم نیست عنصر داخل DOM باشد؛ هر HTMLElement (حتی از قالب react) پاس می‌شود.
- */
+/** عنصر را داخل iframe مخفی رندر و همان iframe را چاپ می‌کند */
 export function printElement(element: HTMLElement, docTitle = "فاکتور") {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
   iframe.style.position = "fixed";
-  iframe.style.right = "-9999px";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
+  iframe.style.left = "-10000px";
+  iframe.style.top = "0";
+  iframe.style.width = "794px"; // عرض A4 در 96dpi
+  iframe.style.height = "1123px";
   iframe.style.border = "0";
   document.body.appendChild(iframe);
 
   const doc = iframe.contentDocument;
-  if (!doc) {
-    document.body.removeChild(iframe);
-    window.print();
+  if (!doc || !iframe.contentWindow) {
+    iframe.remove();
+    window.print(); // fallback
     return;
   }
 
@@ -44,51 +44,74 @@ ${collectStyles()}
 <style>
   @page { size: A4 portrait; margin: 10mm; }
   html, body { margin: 0; padding: 0; background: #ffffff !important; }
-  body > * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  .inv-page { width: 190mm !important; margin: 0 auto !important; box-shadow: none !important; border-radius: 0 !important; }
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* خنثی‌کردن قانون چاپ صفحه اصلی (body * { visibility: hidden }) */
+  @media print {
+    body, body * { visibility: visible !important; }
+  }
+  .inv-page {
+    width: 190mm !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
 </style>
 </head>
 <body></body>
 </html>`);
   doc.close();
 
-  // منتظر می‌مانیم استایل‌ها (فونت گوگل) داخل iframe لود شوند
+  const win = iframe.contentWindow;
+
+  // منتظر استایل‌ها و فونت‌ها می‌مانیم (با سقف زمانی) تا چاپ ناقص نشود
   const fontLink = doc.querySelector('link[rel="stylesheet"]');
-  const ready: Promise<void> =
-    fontLink && iframe.contentWindow
-      ? new Promise((resolve) => {
-          let done = false;
-          const finish = () => {
-            if (!done) {
-              done = true;
-              resolve();
-            }
-          };
-          fontLink.addEventListener("load", finish);
-          setTimeout(finish, 1200); // سقف انتظار فونت
-        })
-      : Promise.resolve();
+  const linkReady: Promise<void> = fontLink
+    ? new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (!done) {
+            done = true;
+            resolve();
+          }
+        };
+        fontLink.addEventListener("load", finish);
+        fontLink.addEventListener("error", finish);
+        setTimeout(finish, 1500);
+      })
+    : Promise.resolve();
 
-  ready.then(() => {
-    const win = iframe.contentWindow;
-    if (!win) return;
-    // کلون کردن نود داخل iframe — استایل‌های کلاس‌محور از همان CSS لودشده اعمال می‌شود
-    const clone = doc.importNode(element, true) as HTMLElement;
-    clone.removeAttribute("id");
-    doc.body.appendChild(clone);
+  const fontsReady: Promise<void> = (
+    win.document.fonts?.ready as unknown as Promise<void>
+  ) ?? Promise.resolve();
 
-    const cleanup = () => {
-      setTimeout(() => {
-        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-      }, 300);
-    };
+  Promise.race([Promise.all([linkReady, fontsReady]), new Promise((r) => setTimeout(r, 2000))]).then(
+    () => {
+      try {
+        const clone = doc.importNode(element, true) as HTMLElement;
+        clone.removeAttribute("id");
+        doc.body.appendChild(clone);
+        // اجازه رفرش-لایوت قبل از چاپ
+        void doc.body.offsetHeight;
 
-    win.focus();
-    if (win.matchMedia("print").matches === false) {
-      // برخی مرورگرها قبل از چاپ به reflow نیاز دارند
-      void doc.body.offsetHeight;
-    }
-    win.print();
-    cleanup();
-  });
+        const cleanup = () => {
+          setTimeout(() => {
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+          }, 500);
+        };
+
+        // بعضی مرورگرها یک فریم برای رندر نهایی لازم دارند
+        win.requestAnimationFrame(() => {
+          win.focus();
+          win.print();
+          cleanup();
+        });
+      } catch {
+        iframe.remove();
+        window.print();
+      }
+    },
+  );
 }
