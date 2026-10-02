@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Circle, MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,26 @@ function ResizeFix() {
     const t = setTimeout(() => map.invalidateSize(), 150);
     return () => clearTimeout(t);
   }, [map]);
+  return null;
+}
+
+/** مارکر + دایره لوکیشن، به‌صورت دستی به نقشه فعال اضافه می‌شود
+ * (کامپوننت‌های اعلایی Marker/Circle در react-leaflet v5 مارکر را رندر نمی‌کنند) */
+function LocationPin({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap();
+  useEffect(() => {
+    const marker = L.marker([lat, lng], { icon, keyboard: false }).addTo(map);
+    const circle = L.circle([lat, lng], {
+      radius: 60,
+      color: "#e11d48",
+      weight: 2,
+      fillOpacity: 0.12,
+    }).addTo(map);
+    return () => {
+      marker.remove();
+      circle.remove();
+    };
+  }, [map, lat, lng]);
   return null;
 }
 
@@ -134,13 +154,14 @@ export function MapPicker({
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             />
             <ClickCapture onPick={onChange} />
-            <ResizeFix />
             {lat != null && lng != null && (
               <>
-                <Marker position={[lat, lng]} icon={icon} />
-                <Circle center={[lat, lng]} radius={60} pathOptions={{ color: "#e11d48", fillOpacity: 0.12 }} />
+                <LocationPin lat={lat} lng={lng} />
+                {/* بعد از انتخاب لوکیشن (کلیک یا GPS) نقشه روی همان نقطه برود */}
+                <Recenter lat={lat} lng={lng} />
               </>
             )}
+            <ResizeFix />
           </MapContainer>
         </div>
         <div className="flex items-center gap-2 border-t bg-background px-3 py-2" dir="rtl">
@@ -286,7 +307,7 @@ export function MapView({
               url={mode === "street" ? OSM_TILES : SAT_TILES}
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             />
-            <Marker position={[lat, lng]} icon={icon} />
+            <LocationPin lat={lat} lng={lng} />
             <Recenter lat={lat} lng={lng} />
             <ResizeFix />
           </MapContainer>

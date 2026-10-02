@@ -177,18 +177,18 @@ export function InvoiceDialog({
                       />
                       <path
                         d="M17.5 9.5 Q24 16 30.5 9.5"
-                        stroke="#1e40af"
+                        stroke="#24488f"
                         strokeWidth="2"
                         strokeLinecap="round"
                         fill="none"
                       />
                       <g strokeLinecap="round">
-                        <path d="M14 36 L31 19" stroke="#1e3a8a" strokeWidth="2.4" />
-                        <path d="M14 36 L12.4 37.6" stroke="#1e3a8a" strokeWidth="2.4" />
-                        <circle cx="31.8" cy="18.2" r="1.4" fill="#1e3a8a" />
+                        <path d="M14 36 L31 19" stroke="#1c3468" strokeWidth="2.4" />
+                        <path d="M14 36 L12.4 37.6" stroke="#1c3468" strokeWidth="2.4" />
+                        <circle cx="31.8" cy="18.2" r="1.4" fill="#1c3468" />
                         <path
                           d="M31 20 Q34 24 31.5 27 Q29 30 32 33 Q34.5 35.5 33 38"
-                          stroke="#93c5fd"
+                          stroke="#9fb9e6"
                           strokeWidth="1.6"
                           fill="none"
                         />

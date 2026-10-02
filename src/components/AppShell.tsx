@@ -120,7 +120,7 @@ export function AppShell({
       {/* glass glow decor */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(240px_120px_at_70%_0%,rgba(96,165,250,0.25),transparent)]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(240px_120px_at_70%_0%,rgba(110,140,210,0.25),transparent)]"
       />
       <Link to="/dashboard" className="relative mb-6 flex items-center gap-3 px-2">
         <BrandMark boxClassName="size-11" />

@@ -142,6 +142,33 @@
   --sidebar-ring: oklch(0.55 0.12 252);
 }
 
+/* بازنگری کل پالت آبی (کلاس‌های blue-*/sky-*) به خانواده سورمه‌ای دکمه «تحویل داده شد»
+   (#1e3a6e ≈ oklch(0.34 0.11 262)). همه صفحات و کامپوننت‌ها بدون تغییر کلاس‌ها سورمه‌ای می‌شوند. */
+@theme {
+  --color-blue-50: oklch(0.955 0.025 262);
+  --color-blue-100: oklch(0.915 0.04 262);
+  --color-blue-200: oklch(0.86 0.06 262);
+  --color-blue-300: oklch(0.77 0.08 262);
+  --color-blue-400: oklch(0.64 0.105 262);
+  --color-blue-500: oklch(0.52 0.115 262);
+  --color-blue-600: oklch(0.42 0.115 262);
+  --color-blue-700: oklch(0.34 0.11 262);   /* ≈ #1e3a6e */
+  --color-blue-800: oklch(0.28 0.095 263);
+  --color-blue-900: oklch(0.235 0.08 264);
+  --color-blue-950: oklch(0.18 0.065 264);
+  --color-sky-50: oklch(0.955 0.025 262);
+  --color-sky-100: oklch(0.915 0.04 262);
+  --color-sky-200: oklch(0.86 0.06 262);
+  --color-sky-300: oklch(0.77 0.08 262);
+  --color-sky-400: oklch(0.64 0.105 262);
+  --color-sky-500: oklch(0.52 0.115 262);
+  --color-sky-600: oklch(0.42 0.115 262);
+  --color-sky-700: oklch(0.34 0.11 262);
+  --color-sky-800: oklch(0.28 0.095 263);
+  --color-sky-900: oklch(0.235 0.08 264);
+  --color-sky-950: oklch(0.18 0.065 264);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -158,6 +185,12 @@
   .leaflet-container {
     font-family: inherit;
     direction: ltr;
+    /* نقشه همیشه داخل کادر خودش بماند: panes با z-index بالا (۲۰۰ تا ۱۰۰۰) leaflet
+       داخل همین کادر ایزوله می‌شوند؛ دیگر هنگام اسکرول روی هدر/کارت‌ها بیرون نمی‌زند
+       و پاپ‌آور/تقویم (z-50) همیشه بالای نقشه دیده می‌شود */
+    isolation: isolate;
+    /* اسکرول/زوم داخل نقشه به صفحه بیرونی نشتی نکند */
+    overscroll-behavior: contain;
   }
 }
 
@@ -191,7 +224,7 @@
 /* ============ برگه فاکتور A4 خوشگل (نسخه چاپی = نمایشی) ============ */
 .inv-page {
   --inv-navy: #16255c;
-  --inv-navy2: #1d4ed8;
+  --inv-navy2: #2a4f97;
   --inv-gold: #d6992e;
   background: #ffffff;
   color: #16255c;
