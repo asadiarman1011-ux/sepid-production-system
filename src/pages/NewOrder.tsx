@@ -566,7 +566,7 @@ export default function NewOrder() {
                 className="sm:col-span-1"
               />
               <div className="sm:col-span-2">
-                <Label className="mb-1.5 text-sm font-semibold">آدرس کتبی</Label>
+                <Label className="mb-1.5 text-sm font-semibold">آدرس</Label>
                 <Input
                   value={header.address}
                   onChange={(e) => setHeader((h) => ({ ...h, address: e.target.value }))}

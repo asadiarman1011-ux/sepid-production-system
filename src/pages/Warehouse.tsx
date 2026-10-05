@@ -212,6 +212,39 @@ export default function Warehouse() {
     setNotes("");
   }
 
+  // جمع‌های فعلی فرم و محاسبه «موجودی نهایی پس از ذخیره» — دقیقاً مطابق منطق سرور (update/create)
+  const formAttrSum = attrRows
+    .filter((a) => a.key.trim() || a.value.trim())
+    .reduce((s, a) => {
+      if (typeof a.valueNum === "number") return s + a.valueNum;
+      const rec =
+        editing && editing.kind === "material"
+          ? (editing.attrQty ?? []).find(
+              (q) => q.key === a.key && q.value === a.value,
+            )?.qty
+          : undefined;
+      return s + (rec && rec > 0 ? rec : seededCount(a.value) || 0);
+    }, 0);
+  const savedAttrSum =
+    editing && editing.kind === "material"
+      ? (editing.attrs ?? []).reduce((s, a) => {
+          const rec = (editing.attrQty ?? []).find(
+            (q) => q.key === a.key && q.value === a.value,
+          )?.qty;
+          return s + (rec && rec > 0 ? rec : seededCount(a.value) || 0);
+        }, 0)
+      : 0;
+  const finalMaterialQty =
+    savedAttrSum === 0 && (editing?.qty ?? 0) > 0
+      ? Math.max(formAttrSum, qty)
+      : Math.max(formAttrSum, qty + (formAttrSum - savedAttrSum));
+  const formSizesSum = sizes.reduce((s, x) => s + (x.valueNum ?? 0), 0);
+  const savedSizesSum = (editing?.sizes ?? []).reduce((s, x) => s + x.qty, 0);
+  const finalApparelQty =
+    savedSizesSum === 0 && (editing?.qty ?? 0) > 0
+      ? Math.max(formSizesSum, editing?.qty ?? 0)
+      : formSizesSum + Math.max(0, (editing?.qty ?? 0) - savedSizesSum);
+
   function openEdit(item: WhDoc) {
     setEditing(item);
     setKind(item.kind);
@@ -299,7 +332,11 @@ export default function Warehouse() {
           await createItem({ kind, ...payload });
         }
       }
-      toast.success(editing ? "ویرایش شد" : "به انبار اضافه شد");
+      toast.success(
+        editing
+          ? `ویرایش شد — موجودی کل: ${formatNumber(kind === "apparel" ? finalApparelQty : finalMaterialQty)}`
+          : "به انبار اضافه شد",
+      );
       setDialogOpen(false);
       resetForm();
     } catch (err) {
@@ -620,6 +657,11 @@ export default function Warehouse() {
                       <Plus className="size-3.5" />
                       افزودن سایز
                     </Button>
+                    {sizes.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        موجودی نهایی پس از ذخیره: {formatNumber(finalApparelQty)} {unit.trim() || "دست"}
+                      </p>
+                    )}
                   </div>
                 </div>
               </>
@@ -698,6 +740,11 @@ export default function Warehouse() {
                   <div>
                     <Label className="mb-1.5 text-sm font-semibold">موجودی</Label>
                     <Input type="number" value={qty} onChange={(e) => setQty(Number(e.target.value))} className="h-11 border-2" dir="ltr" />
+                    {attrRows.length > 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        موجودی نهایی پس از ذخیره: {formatNumber(finalMaterialQty)} {unit.trim() || "عدد"}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label className="mb-1.5 text-sm font-semibold">حداقل هشدار</Label>

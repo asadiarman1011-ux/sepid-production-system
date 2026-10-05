@@ -167,7 +167,7 @@ export const create = mutation({
       args.kind === "apparel"
         ? (args.sizes ?? []).reduce((s, x) => s + x.qty, 0)
         : attrQty && attrQty.length > 0
-          ? attrQty.reduce((s, x) => s + x.qty, 0)
+          ? attrQty.reduce((s, x) => s + x.qty, 0) + args.qty
           : args.qty;
     const id = await ctx.db.insert("warehouseItems", {
       ...createArgs,
@@ -238,17 +238,26 @@ export const update = mutation({
             };
           })
         : undefined;
-    const totalQty =
-      item.kind === "apparel"
-        ? (args.sizes ?? []).reduce((s, x) => s + x.qty, 0)
-        : attrQty && attrQty.length > 0
-          ? attrQty.reduce((s, x) => s + x.qty, 0)
-          : args.qty;
+    // موجودی کل پس از ویرایش — همگام با تغییرات فرم:
+    // • پوشاک: جمع سایزها + موجودیِ بدون‌سایز قبلی (ورود/خروجی که روی کل زده شده با ویرایش از بین نمی‌رود)
+    // • مواد اولیه: جمع زیرشاخه‌ها + تغییر فیلد «موجودی» فرم نسبت به جمع قبلی زیرشاخه‌ها
+    const totalQty = (() => {
+      if (item.kind === "apparel") {
+        const oldSum = (item.sizes ?? []).reduce((s, x) => s + x.qty, 0);
+        const newSum = (args.sizes ?? []).reduce((s, x) => s + x.qty, 0);
+        // قلم بدون سایزگذاری قبلی که موجودی داشته: موجودی موجود بین سایزهای تازه تخصیص می‌یابد
+        if (oldSum === 0 && item.qty > 0) return Math.max(newSum, item.qty);
+        return newSum + Math.max(0, item.qty - oldSum);
+      }
+      const oldPartSum = resolveAttrQty(item).reduce((s, x) => s + x.qty, 0);
+      const newPartSum = (attrQty ?? []).reduce((s, x) => s + x.qty, 0);
+      if (oldPartSum === 0 && item.qty > 0) return Math.max(newPartSum, args.qty);
+      return newPartSum + Math.max(0, args.qty - oldPartSum);
+    })();
     // گزارش تغییرات
     const changes: { field: string; old?: string; new?: string }[] = [];
     const fieldLabels: Record<string, string> = {
       name: "نام",
-      qty: "موجودی",
       minQty: "حداقل هشدار",
       unit: "واحد",
       price: "قیمت",
@@ -284,6 +293,13 @@ export const update = mutation({
                 : String(newVal),
         });
       }
+    }
+    if (totalQty !== item.qty) {
+      changes.push({
+        field: "موجودی کل",
+        old: formatNum(item.qty),
+        new: formatNum(totalQty),
+      });
     }
     await ctx.db.patch(id, {
       ...args,

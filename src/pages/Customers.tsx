@@ -463,7 +463,7 @@ export default function Customers() {
               </Select>
             </div>
             <div>
-              <Label className="mb-1.5 text-sm font-semibold">آدرس کتبی</Label>
+              <Label className="mb-1.5 text-sm font-semibold">آدرس</Label>
               <Textarea
                 value={form.address}
                 onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
