@@ -4,6 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Loader2, LocateFixed, MapPin, Navigation } from "lucide-react";
 
 // leaflet default marker icons via CDN-safe data URLs
@@ -85,15 +86,53 @@ export function MapPicker({
   const center: [number, number] = [lat ?? 35.6892, lng ?? 51.389]; // تهران پیش‌فرض
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      toast.error("مرورگر شما از سرویس موقعیت‌یاب پشتیبانی نمی‌کند");
+      return;
+    }
     setLocating(true);
+    const inIframe = window.self !== window.top;
+    const failFinal = (err: GeolocationPositionError) => {
+      setLocating(false);
+      if (err.code === err.PERMISSION_DENIED) {
+        toast.error("دسترسی به موقعیت داده نشد", {
+          duration: 12000,
+          description: inIframe
+            ? "پیش‌نمایش داخل کادر اجازه لوکیشن نمی‌دهد — دکمه «Open in new tab» را بزنید و در تب جدید اجازه دهید. در تب اصلی هم می‌توانید از آیکن قفل/چشم نوار آدرس، Location را روی Allow بگذارید."
+            : "از آیکن قفل/چشم کنار آدرس سایت در نوار مرورگر، اجازه Location را روی Allow بگذارید و دوباره امتحان کنید.",
+        });
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        toast.error("موقعیت دستگاه در دسترس نیست", {
+          duration: 12000,
+          description:
+            "سرویس موقعیت دستگاه خاموش است. در ویندوز: Settings → Privacy & security → Location را روشن کنید. روی گوشی هم Location (GPS) را روشن کنید.",
+        });
+      } else {
+        toast.error("دریافت موقعیت بیش از حد طول کشید", {
+          description: "یک‌بار دیگر دکمه «لوکیشن من» را بزنید.",
+        });
+      }
+    };
+    const onOk = (pos: GeolocationPosition) => {
+      onChange(pos.coords.latitude, pos.coords.longitude);
+      setLocating(false);
+      toast.success("لوکیشن شما روی نقشه ثبت شد");
+    };
+    // تلاش اول با GPS دقیق؛ اگر جواب نداد (کامپیوتر GPS ندارد)، تلاش دوم با دقت پایین
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        onChange(pos.coords.latitude, pos.coords.longitude);
-        setLocating(false);
+      onOk,
+      (err) => {
+        if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+          navigator.geolocation.getCurrentPosition(onOk, failFinal, {
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 60000,
+          });
+        } else {
+          failFinal(err);
+        }
       },
-      () => setLocating(false),
-      { enableHighAccuracy: true, timeout: 8000 },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
 
@@ -137,7 +176,7 @@ export function MapPicker({
               ) : (
                 <LocateFixed className="size-3.5" />
               )}
-              لوکیشن من
+              {locating ? "در حال دریافت…" : "لوکیشن من"}
             </Button>
           </div>
         </div>
